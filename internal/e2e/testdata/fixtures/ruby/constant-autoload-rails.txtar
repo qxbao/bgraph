@@ -1,0 +1,43 @@
+Rails keeps data dependencies while a declared lazy-service method change follows references even through helper files.
+-- base/bgraph.toml --
+[[ruby_autoload]]
+paths = ["app/services/**/*.rb"]
+reason = "Services in the test environment are only reached by ordinary constant lookup"
+-- base/Gemfile --
+gem "rails"
+-- base/config/application.rb --
+class Application < Rails::Application
+end
+-- base/config/environments/test.rb --
+Rails.application.configure do
+  config.eager_load = false
+end
+-- base/app/services/email_sender.rb --
+class EmailSender
+  def deliver
+    :ok
+  end
+end
+-- base/app/services/sms_sender.rb --
+class SmsSender; end
+-- base/spec/support/notify.rb --
+def notify
+  EmailSender.new.deliver
+end
+-- base/spec/email_spec.rb --
+require_relative "../config/application"
+require_relative "support/notify"
+notify
+-- base/spec/sms_spec.rb --
+require_relative "../config/application"
+SmsSender.new
+-- head/app/services/email_sender.rb --
+class EmailSender
+  def deliver
+    :failed
+  end
+end
+-- want --
+scope graph
+select spec/email_spec.rb
+noselect spec/sms_spec.rb

@@ -1,4 +1,4 @@
-// Package ruby is bgraph's Ruby ecosystem (RSpec, Minitest / Test::Unit, Rails test; Bundler), at test-file granularity: Ruby
+// Package ruby is bgraph's Ruby ecosystem (RSpec, Minitest / Test::Unit, Rails test, Cucumber; Bundler), at test-file granularity: Ruby
 // loads code with require/require_relative/load/autoload into one process, so a test file's dependencies are the transitive
 // closure of what it loads. The scanner is internal/scan/ruby.
 //
@@ -8,8 +8,8 @@
 // plus the repository root when a Ruby file lies outside every such directory. Markers below a test-data directory (a path
 // segment spec, test, tests, fixtures, fixture, tmp, vendor, node_modules or .bundle) are data, not projects: an engine's
 // test/dummy app or a spec/fixtures gem belongs to the enclosing project. A repository with no marker is not analyzed (a stray
-// .rb file is left to the general rules), and a repository without any .rb, Gemfile or *.gemspec returns at once. Every file
-// belongs to its nearest project. node_modules, .bundle and vendor/bundle are never repository code.
+// .rb file is left to the general rules), except an unbundled root Cucumber suite identified by its features and Ruby glue.
+// Every file belongs to its nearest project. node_modules, .bundle and vendor/bundle are never repository code.
 //
 // Ruby files: .rb, .rake, .ru, .gemspec, Gemfile, Rakefile, and extensionless files directly below a bin/, exe/ or libexec/
 // directory whose shebang line names ruby (executables, scanned without the cache).
@@ -37,6 +37,9 @@
 // A computed test pattern (a non-literal `pattern =`, `test_files =` or `ruby_opts`, a pattern bgraph cannot compile, ERB in an
 // .rspec file) adds the whole-project unit ID "<rb-all-tests:DIR>" (WholeUnitID / ParseWholeUnitID; DIR is the project, "." for
 // the root; Whole, Runner "rake" or "rspec", no Files), which the selector runs on any change (config_is_code).
+//
+// Cucumber runs one .feature file per conventional unit, with shared dependencies on the features directory's support.
+// Cucumber profiles and nonstandard support discovery get a whole-suite unit, <rb-all-cucumber:DIR>.
 //
 // # Graph (From depends on To)
 //
@@ -69,6 +72,8 @@
 //     directories: pattern edges DIR/<d>/** for app, lib, config, db, vendor and every other top-level directory of the project
 //     except spec, test, tests, tmp, log, coverage, node_modules, doc, docs, .git, .github, .bundle (templates, assets, locales
 //     and config/*.yml included: request and system specs render them). Nested projects are reached through their features.
+//   - The optional [[ruby_autoload]] declaration replaces blanket loader edges for conventional lazy files with references
+//     from Ruby constant lookups. Indirect operations retain a dependency on every declared file. Structural changes widen.
 //   - Bundler.require: the features of the gems of the nearest Gemfile (and of files it loads with eval_gemfile): the gem name
 //     (and the name with - as /) or its require: option, nothing for require: false, and the gem names of the gemspecs named
 //     by `gemspec`.
@@ -153,7 +158,7 @@ const (
 )
 
 // AnalyzerVersion: bump whenever the analysis rules change to invalidate stored analysis snapshots.
-const AnalyzerVersion = "ruby-5"
+const AnalyzerVersion = "ruby-8"
 
 // Eco is the Ruby ecosystem.
 type Eco struct {
@@ -215,6 +220,7 @@ type builder struct {
 	dyn      []rules.Dynamic // [[dynamic]] declarations
 	dynUsed  []bool
 	rails    map[string]bool // projects that are Rails applications
+	autoload *autoloadTargets
 }
 
 // skipPath: never repository code.
@@ -285,7 +291,7 @@ func (e *Eco) Analyze(ctx context.Context, t tree.Tree, sc eco.Scanner) (*eco.An
 	files := t.Files()
 	any := false
 	for _, p := range files {
-		if strings.HasSuffix(p, ".rb") || strings.HasSuffix(p, ".gemspec") || path.Base(p) == "Gemfile" {
+		if strings.HasSuffix(p, ".rb") || strings.HasSuffix(p, ".gemspec") || strings.HasSuffix(p, ".feature") || path.Base(p) == "Gemfile" {
 			any = true
 			break
 		}
@@ -328,6 +334,9 @@ func (e *Eco) Analyze(ctx context.Context, t tree.Tree, sc eco.Scanner) (*eco.An
 		if i := fixtureIndex(p); i > 0 {
 			fixtureDirs[p[:i]] = true
 		}
+	}
+	if !b.markers["."] && standaloneCucumber(files) {
+		b.markers["."] = true
 	}
 	if len(b.markers) == 0 {
 		return a, nil // Ruby files but no Ruby project: left to the general rules
@@ -437,6 +446,7 @@ func (e *Eco) Analyze(ctx context.Context, t tree.Tree, sc eco.Scanner) (*eco.An
 
 	// Units.
 	units := b.units(cfg)
+	b.initAutoload(e.rules, units)
 	for _, p := range b.rbFiles {
 		fi := b.infos[p]
 		role := model.RoleSource
@@ -453,7 +463,7 @@ func (e *Eco) Analyze(ctx context.Context, t tree.Tree, sc eco.Scanner) (*eco.An
 			role = model.RoleConfig
 		}
 		a.Roles[p] = role
-		b.fileEdges(fi, units[p] != nil)
+		b.fileEdges(fi, units[p] != nil || cucumberFeaturesPath(p, fi.proj))
 	}
 	var ids []string
 	for p := range units {
@@ -495,6 +505,7 @@ func (e *Eco) Analyze(ctx context.Context, t tree.Tree, sc eco.Scanner) (*eco.An
 	}
 	b.staleDeclarations()
 	b.otherRoles(files)
+	b.addCucumber(files)
 	slices.SortFunc(a.Edges, func(x, y model.Edge) int {
 		if c := strings.Compare(x.From, y.From); c != 0 {
 			return c

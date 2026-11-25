@@ -1,0 +1,30 @@
+Edit a nested feature directly. It is the only selected unit in a mixed Ruby and Node repository.
+-- base/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/features/one.feature --
+Feature: One
+  Scenario: First
+    Given one thing
+-- base/features/nested/two.feature --
+Feature: Two
+  Scenario: Second
+    Given one thing
+-- base/features/one/steps.rb --
+Given("one thing") {}
+-- base/spec/one_spec.rb --
+RSpec.describe("one") {}
+-- base/web/package.json --
+{"name":"web","devDependencies":{"vitest":"^1.0.0"}}
+-- base/web/one.test.js --
+test("one", () => {})
+-- head/features/nested/two.feature --
+Feature: Two
+  Scenario: Second changed
+    Given one thing
+-- want --
+scope graph
+select features/nested/two.feature
+noselect features/one.feature
+noselect spec/one_spec.rb
+noselect web/one.test.js

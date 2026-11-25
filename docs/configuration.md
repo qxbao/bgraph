@@ -1,8 +1,8 @@
 # Configuration: `bgraph.toml`
 
 `bgraph.toml` is optional. Put it at the repository root and commit it. It declares what bgraph cannot infer from the
-code: dependencies no import expresses, generated files, runner-config keys computed by code, and what dynamic imports can
-load. It also holds a few settings.
+code: dependencies no import expresses, generated files, runner-config keys computed by code, targets of dynamic imports,
+and conventional Ruby files reached through lazy constant lookup. It also holds a few settings.
 
 A complete annotated example is [`bgraph.example.toml`](bgraph.example.toml). Start from what bgraph reports:
 `bgraph unresolved` prints a ready-to-edit snippet next to every import or config key it could not read, and every
@@ -27,7 +27,7 @@ widening in `bgraph affected` output may carry a `suggest` snippet.
 | **Widening** (safe) | adds dependencies, so more tests run | only costs CI time |
 | **Narrowing** (trusted) | tells bgraph that something it would widen on is fine | can make bgraph **skip a test the change breaks** |
 
-`[[config]]` and `[[dynamic]]` entries require a `reason`; give one to `affects = "none"` rules too (it is optional
+`[[config]]`, `[[dynamic]]` and `[[ruby_autoload]]` entries require a `reason`; give one to `affects = "none"` rules too (it is optional
 there). Review narrowing entries like code, and re-check them when what they describe changes.
 
 ## Tables at a glance
@@ -38,6 +38,7 @@ there). Review narrowing entries like code, and re-check them when what they des
 | [`[[generated]]`](#generated) | narrowing | Node, Dart | git-ignored build outputs that code imports |
 | [`[[config]]`](#config) | narrowing | Node | runner-config keys computed in code |
 | [`[[dynamic]]`](#dynamic) | narrowing | Python, Ruby | what dynamic imports of a file can load |
+| [`[[ruby_autoload]]`](#ruby_autoload) | narrowing | Ruby | which lazy autoload targets can follow constant references |
 | [`[dynamic_layer]`](#dynamic_layer) | narrowing | Python, Node, JVM, .NET, Ruby | enable the record-based dynamic layer |
 | [`[lockfile]`](#lockfile) | narrowing at `L2` | Node, Rust, Python | lockfile comparison level |
 | [`[options]`](#options) | – | selector | thresholds |
@@ -199,6 +200,24 @@ reason = "the runner only imports the test modules it collects"
 file = "lib/mytool/plugin_loader.rb"
 loads = ["lib/mytool/plugins/*.rb"]
 reason = "require \"mytool/plugins/#{name}\" only loads the bundled plugins"
+```
+
+## `[[ruby_autoload]]`
+
+Declares conventional Zeitwerk or Rails `.rb` files whose lazy loads are covered by constant lookups in scanned Ruby
+sources and explicit dependencies. The declaration replaces blanket loader edges for those files. Keep its globs scoped
+to files that can be analyzed this way. Review the runtime assumptions when loader configuration or framework conventions
+change. See [Ruby constant-level autoloading](ecosystems/ruby.md#constant-level-autoloading).
+
+| Key | Required | Value |
+|---|---|---|
+| `paths` | yes | non-empty list of repository-relative globs matching lazy autoload targets |
+| `reason` | yes | why the files' implicit dependencies are covered by the constant graph |
+
+```toml
+[[ruby_autoload]]
+paths = ["lib/shop/services/**/*.rb"]
+reason = "The service classes load lazily and all callers name them as ordinary Ruby constants"
 ```
 
 ## `[dynamic_layer]`

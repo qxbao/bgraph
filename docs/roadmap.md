@@ -30,7 +30,7 @@ commit as the feature:
 | .NET (VSTest, Microsoft.Testing.Platform) | MSBuild project | – | test classes | [dotnet](ecosystems/dotnet.md) |
 | Go | package | go.sum (lines only added) | – | [go](ecosystems/go.md) |
 | PHP | Composer project | – | – | [php](ecosystems/php.md) |
-| Ruby (RSpec, Minitest, Test::Unit, Rails) | test file | – | test files, per changed method | [ruby](ecosystems/ruby.md) |
+| Ruby (RSpec, Minitest, Test::Unit, Rails, Cucumber) | test file | – | Ruby test files, per changed method | [ruby](ecosystems/ruby.md) |
 | Swift (SwiftPM) | test target or package | – | – | [swift](ecosystems/swift.md) |
 | C and C++ (CMake/CTest, Meson) | registered test or build project | – | – | [C and C++](ecosystems/cpp.md) |
 | Dart / Flutter | test file | – | – | [dart](ecosystems/dart.md) |
@@ -39,9 +39,10 @@ commit as the feature:
 
 | Item | Status | Priority | Notes | Page |
 |---|---|---|---|---|
-| Ruby (RSpec, Minitest; Bundler, `Gemfile.lock`) | done (unreleased) | 1 | Test-file units; `require` by path suffix; Zeitwerk and Rails autoloading depend on whole directories; computed `require` widens (describable with `[[dynamic]]`) | [ruby](ecosystems/ruby.md) |
-| Ruby: constant-level narrowing for Zeitwerk and Rails autoloading | planned | 2 | Today an autoloading application or gem depends on every file it can autoload; mapping referenced constants to files would narrow it, with widening for metaprogramming | [ruby](ecosystems/ruby.md#known-gaps-and-over-selection) |
-| Ruby: Cucumber features | planned | 3 | `.feature` files are not units; a change to one widens its project | |
+| Ruby (RSpec, Minitest; Bundler, `Gemfile.lock`) | done (unreleased) | 1 | Test-file units; `require` by path suffix; Zeitwerk and Rails autoloading depend on whole directories by default; computed `require` widens (describable with `[[dynamic]]`) | [ruby](ecosystems/ruby.md) |
+| Ruby: constant-level narrowing for Zeitwerk and Rails autoloading | done (unreleased) | 2 | Opt-in `[[ruby_autoload]]` for lazy files with conventional names. Keeps directory coverage for indirect lookups, eager loading and structural edits. | [ruby](ecosystems/ruby.md#constant-level-autoloading) |
+| Ruby: Cucumber features | done (unreleased) | 3 | One unit per conventional `.feature` file, with shared support and step definitions. Profiles use the native whole-suite command. | [ruby](ecosystems/ruby.md#cucumber-features) |
+| Ruby: Cucumber Rake tasks | planned | 3 | Discover custom `Cucumber::Rake::Task` commands and their task-specific feature and support paths. | [ruby](ecosystems/ruby.md#known-gaps-and-over-selection) |
 | PHP (PHPUnit, Pest; Composer, `composer.lock`) | done (unreleased) | 1 | Project ownership, Composer autoload roots, and static and computed includes | [php](ecosystems/php.md) |
 | Deno (`deno test`, `deno.json`, `deno.lock`) | dropped | – | Cloudflare acquired Deno (Oct 2026); runtime development ends around Oct 2027 with maintenance only until then. Not worth a scanner and evaluation for a sunsetting runtime; reopen if a maintained fork gains adoption | |
 | Swift (SwiftPM, `swift test`, `Package.resolved`) | done (unreleased) | 2 | SwiftPM test targets, package fallback for computed manifests, L0 lockfiles | [swift](ecosystems/swift.md) |

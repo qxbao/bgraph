@@ -16,6 +16,7 @@ var railsSkip = map[string]bool{"spec": true, "test": true, "tests": true, "tmp"
 // fileEdges adds the edges and unresolved sites of one Ruby file.
 func (b *builder) fileEdges(fi *fileInfo, unit bool) {
 	p := fi.p
+	b.constantEdges(p)
 	if fi.scan.Uncertain {
 		b.unres(p, "*", model.UnresolvedUncertainScan, 0, fi.scan.UncertainReason)
 	}
@@ -33,7 +34,7 @@ func (b *builder) fileEdges(fi *fileInfo, unit bool) {
 		case model.ImportRbPushDir:
 			b.pushDir(fi, im)
 		case model.ImportRbZeitwerk:
-			b.edge(p, under(path.Dir(p), "**/*.rb"), model.EdgePattern, "Zeitwerk::Loader.for_gem", im.Line)
+			b.autoloadEdge(p, under(path.Dir(p), "**/*.rb"), "Zeitwerk::Loader.for_gem", im.Line)
 		case model.ImportRbRails:
 			b.railsApp(fi, im)
 		case model.ImportRbBundler:
@@ -310,6 +311,13 @@ func (b *builder) pushDir(fi *fileInfo, im model.ImportRef) {
 	} else {
 		spec = strings.TrimSuffix(spec, "/")
 	}
+	add := func(pattern string) {
+		if im.Dynamic {
+			b.edge(p, pattern, model.EdgePattern, "push_dir", im.Line)
+		} else {
+			b.autoloadEdge(p, pattern, "push_dir", im.Line)
+		}
+	}
 	switch im.Suffix {
 	case "rel", "root":
 		d := path.Join(baseDir(fi, im.Suffix), spec)
@@ -321,17 +329,17 @@ func (b *builder) pushDir(fi *fileInfo, im model.ImportRef) {
 			return
 		}
 		if d == "." || d == "" {
-			b.edge(p, "**/*.rb", model.EdgePattern, "push_dir", im.Line)
+			add("**/*.rb")
 			return
 		}
-		b.edge(p, escapeGlob(d)+tail, model.EdgePattern, "push_dir", im.Line)
+		add(escapeGlob(d) + tail)
 	default:
 		s := stripWD(spec)
 		if s == "" {
-			b.edge(p, "**/*.rb", model.EdgePattern, "push_dir", im.Line)
+			add("**/*.rb")
 			return
 		}
-		b.edge(p, "**/"+escapeGlob(s)+tail, model.EdgePattern, "push_dir", im.Line)
+		add("**/" + escapeGlob(s) + tail)
 	}
 }
 
@@ -349,7 +357,7 @@ func (b *builder) railsApp(fi *fileInfo, im model.ImportRef) {
 	}
 	sort.Strings(list)
 	for _, d := range list {
-		b.edge(fi.p, under(path.Join(fi.proj, d), "**"), model.EdgePattern, "Rails::"+map[string]string{"app": "Application", "engine": "Engine"}[im.Spec], im.Line)
+		b.autoloadEdge(fi.p, under(path.Join(fi.proj, d), "**"), "Rails::"+map[string]string{"app": "Application", "engine": "Engine"}[im.Spec], im.Line)
 	}
 }
 

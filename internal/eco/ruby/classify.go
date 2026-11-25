@@ -70,6 +70,9 @@ func (e *Eco) ClassifyChange(p string, base, head tree.Tree, a *eco.Analysis) ([
 	if !hasRuby(a) || skipPath(p) {
 		return nil, false
 	}
+	if why := e.autoloadChange(p, base, head); why != "" {
+		return []model.Widening{w(model.ReasonConfigIsCode, p, ".", why)}, true
+	}
 	name := path.Base(p)
 	dir := path.Dir(p)
 	proj, inProj := projectOf(a, p)
@@ -92,6 +95,10 @@ func (e *Eco) ClassifyChange(p string, base, head tree.Tree, a *eco.Analysis) ([
 			return nil, false
 		}
 		return []model.Widening{w(model.ReasonLockChanged, p, dir, "Bundler lockfile at level L0 (resolved versions not compared)")}, true
+	case inProj && (name == "cucumber.yml" || name == "cucumber.yaml") && isCucumberProfile(p, proj) && hasCucumber(a, proj):
+		wd := w(model.ReasonTestConfig, p, proj, "Cucumber profiles can change feature paths and loaded support")
+		wd.Exact = true
+		return []model.Widening{wd}, true
 	case name == ".rspec" || name == ".rspec-local" || name == ".rspec-parallel" || name == "spec.opts" && path.Base(dir) == "spec":
 		d := dir
 		if name == "spec.opts" {

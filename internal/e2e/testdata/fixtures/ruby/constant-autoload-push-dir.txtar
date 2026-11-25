@@ -1,0 +1,43 @@
+A literal push_dir can use declared lazy constants, keeping every plausible target for the same leaf name.
+-- base/bgraph.toml --
+[[ruby_autoload]]
+paths = ["lib/shop/**/*.rb"]
+reason = "The shop namespace exposes these services through ordinary constant lookup"
+-- base/Gemfile --
+gem "zeitwerk"
+-- base/lib/shop.rb --
+require "zeitwerk"
+module Shop; end
+loader = Zeitwerk::Loader.new
+loader.push_dir(File.join(__dir__, "shop"), namespace: Shop)
+loader.setup
+-- base/lib/shop/admin/api_client.rb --
+class Shop::Admin::ApiClient
+  def self.token
+    :a
+  end
+end
+-- base/lib/shop/api_client.rb --
+class Shop::ApiClient; end
+-- base/lib/shop/receipt.rb --
+class Shop::Receipt; end
+-- base/spec/admin_spec.rb --
+require "shop"
+Shop::Admin::ApiClient.token
+-- base/spec/public_spec.rb --
+require "shop"
+Shop::ApiClient.new
+-- base/spec/receipt_spec.rb --
+require "shop"
+Shop::Receipt.new
+-- head/lib/shop/admin/api_client.rb --
+class Shop::Admin::ApiClient
+  def self.token
+    :b
+  end
+end
+-- want --
+scope graph
+select spec/admin_spec.rb
+select spec/public_spec.rb
+noselect spec/receipt_spec.rb

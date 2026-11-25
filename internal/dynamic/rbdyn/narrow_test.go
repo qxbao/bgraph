@@ -22,6 +22,14 @@ const cartRb = `class Cart
 end
 `
 
+func TestNarrowableCucumber(t *testing.T) {
+	u := model.SelectedTest{Unit: "features/cart.feature", Project: ".", Runner: "cucumber",
+		Files: []string{"features/cart.feature"}}
+	if Narrowable(u, Eco) {
+		t.Fatal("the Ruby method collector does not record Cucumber features")
+	}
+}
+
 var baseFiles = map[string]string{
 	"Gemfile":                "gem \"minitest\"\n",
 	"lib/cart.rb":            cartRb,

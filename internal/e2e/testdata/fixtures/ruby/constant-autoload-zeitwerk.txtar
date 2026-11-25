@@ -1,0 +1,50 @@
+A scoped Zeitwerk declaration keeps direct constant users and explicit loads, including references in interpolations.
+-- base/bgraph.toml --
+[[ruby_autoload]]
+paths = ["lib/shop/services/**/*.rb"]
+reason = "These leaf services are lazy-loaded by constant name or explicit require"
+-- base/Gemfile --
+gem "zeitwerk"
+-- base/lib/shop.rb --
+require "zeitwerk"
+loader = Zeitwerk::Loader.for_gem
+loader.setup
+module Shop; end
+-- base/lib/shop/services/receipt.rb --
+module Shop::Services
+  class Receipt
+    def self.total
+      42
+    end
+  end
+end
+-- base/lib/shop/services/invoice.rb --
+module Shop::Services
+  class Invoice; end
+end
+-- base/spec/receipt_spec.rb --
+require "shop"
+"receipt: #{Shop::Services::Receipt.total}"
+-- base/spec/explicit_spec.rb --
+require "shop/services/receipt"
+-- base/spec/invoice_spec.rb --
+require "shop"
+Shop::Services::Invoice
+-- base/spec/comment_spec.rb --
+require "shop"
+# Shop::Services::Receipt
+'Shop::Services::Receipt'
+-- head/lib/shop/services/receipt.rb --
+module Shop::Services
+  class Receipt
+    def self.total
+      43
+    end
+  end
+end
+-- want --
+scope graph
+select spec/receipt_spec.rb
+select spec/explicit_spec.rb
+noselect spec/invoice_spec.rb
+noselect spec/comment_spec.rb

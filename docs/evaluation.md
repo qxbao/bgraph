@@ -213,6 +213,20 @@ mutated copy, so a mutant breaks `dart test` itself.
 | Dart | 3 repositories, 7 packages: the test files `dart test` loads in a whole run are exactly bgraph's units (66 of 66, none missing, none extra); a `@TestOn('browser')` file skipped on the VM is the one explained extra seen in a probe |
 | Node | Vitest / Jest `--changed` ⊆ bgraph on every non-full T2 mutant. Comparison with general code-graph tools: [Benchmarks](benchmarks.md) |
 
+#### Ruby Cucumber and constant autoloading
+
+- The capped Ruby T1 regression scored 117 tasks across seven repositories, with 115 graph or scoped selections, two full
+  selections (`global_input`) and zero violations. Two more tasks had no oracle. Explicit scenario paths from two Jekyll
+  tasks both passed the Cucumber T1 check. Opaque profile paths require a separate native discovery check.
+- Jekyll's conventional discovery matched all 28 native Cucumber 9.2.1 feature files. Aruba's default profile matched all
+  102 native Cucumber 12.0.1 feature files through the generated whole-suite command. A conventional nested feature ran
+  through the generated filtered command and loaded its step from a sibling directory. A separate native Cucumber fixture
+  selected all failures from six shared-support mutations. A Jekyll permalink mutation failed four feature files out of 28,
+  all covered by the shared-support selection.
+- With opt-in `[[ruby_autoload]]`, six Zeitwerk 2.8.3 method mutations each failed one of six Minitest files and selected exactly
+  that file. The six declared names matched Zeitwerk's native constant paths. A method rename selected all six. A Rails 8.1
+  service mutation selected the single failing test in a two-test native application.
+
 ### Replay
 
 Node: 500 historical commits, 0 invariant violations, 0 full scopes on ordinary commits, median selection 0.954

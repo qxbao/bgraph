@@ -49,7 +49,7 @@ type RbT1Info struct {
 	Kept      int      `json:"kept"`
 	Untouched int      `json:"untouched,omitempty"` // n2p: located only in files the test patch does not touch
 	NotFound  int      `json:"not_found,omitempty"`
-	Dropped   []string `json:"dropped,omitempty"` // located outside a Ruby test unit (Cucumber scenarios, helper base classes): no requirement
+	Dropped   []string `json:"dropped,omitempty"` // located outside a Ruby test unit (e.g. helper base classes): no requirement
 	NoOwner   int      `json:"no_owner,omitempty"`
 	// NoOwnerFiles: located test files that no bgraph unit runs (a potential miss of the unit rule; review each).
 	NoOwnerFiles     []string      `json:"no_owner_files,omitempty"`
@@ -120,9 +120,20 @@ func rbRequired(ctx context.Context, dir, p string, ids []string, tp map[string]
 		if u, ok := unitOf[f]; ok {
 			return []string{u}
 		}
+		if path.Ext(f) == ".feature" {
+			for _, w := range wholes {
+				if w.Runner == ruby.RunnerCucumber && pyWithin(f, w.Project) {
+					// An opaque profile may change which paths the whole suite runs.
+					// Leave this requirement unmapped until a native provider check.
+					return nil
+				}
+			}
+			// A scenario location identifies its runnable file even if analysis missed it.
+			return []string{f}
+		}
 		var out []string
 		for _, w := range wholes {
-			if pyWithin(f, w.Project) {
+			if w.Runner != ruby.RunnerCucumber && pyWithin(f, w.Project) {
 				out = append(out, w.ID)
 			}
 		}
@@ -176,16 +187,35 @@ func rbRequired(ctx context.Context, dir, p string, ids []string, tp map[string]
 	return sortedKeys(set), info, nil
 }
 
-// rbMissing returns the required unit IDs the selection lacks (a selected whole-project unit covers the files of its project),
+// rbMissing returns the required unit IDs the selection lacks (a selected whole-project unit covers its own runner and project),
 // records the violations per name and the units still missing if ambiguous names required only the test-patch candidates.
 func rbMissing(req []string, sel []SelUnit, info *RbT1Info, changed []string) []string {
-	return fileUnitMissing(req, sel, info, changed, ruby.ParseWholeUnitID, pyWithin)
+	return fileUnitMissingWithCoverage(req, sel, info, changed, rbWholeCovers)
 }
 
-// fileUnitMissing is rbMissing for any file-granular ecosystem; parseWhole returns the project directory of a whole-project unit ID,
-// within(f, dir) reports whether the whole-project unit of directory dir runs f (a file, or the directory of a required whole unit).
+func rbWholeCovers(id string, whole SelUnit) bool {
+	if d, ok := ruby.ParseWholeUnitID(whole.Unit); ok {
+		if required, ok := ruby.ParseWholeUnitID(id); ok {
+			return d == required
+		}
+		return path.Ext(id) == ".rb" && pyWithin(id, d)
+	}
+	return false
+}
+
+// fileUnitMissing checks a file-granular ecosystem whose whole units cover every requirement within their project.
 func fileUnitMissing(req []string, sel []SelUnit, info *RbT1Info, changed []string, parseWhole func(string) (string, bool),
 	within func(f, dir string) bool) []string {
+	return fileUnitMissingWithCoverage(req, sel, info, changed, func(id string, whole SelUnit) bool {
+		if d, ok := parseWhole(id); ok {
+			id = d
+		}
+		return within(id, whole.WholeProject)
+	})
+}
+
+// fileUnitMissingWithCoverage records the per-name misses using the ecosystem's whole-unit coverage rule.
+func fileUnitMissingWithCoverage(req []string, sel []SelUnit, info *RbT1Info, changed []string, wholeCovers func(string, SelUnit) bool) []string {
 	have := map[string]bool{}
 	for _, u := range sel {
 		have[u.Unit] = true
@@ -194,12 +224,8 @@ func fileUnitMissing(req []string, sel []SelUnit, info *RbT1Info, changed []stri
 		if have[id] {
 			return true
 		}
-		f := id
-		if d, ok := parseWhole(id); ok {
-			f = d
-		}
 		for _, u := range sel {
-			if u.Whole && within(f, u.WholeProject) {
+			if u.Whole && wholeCovers(id, u) {
 				return true
 			}
 		}

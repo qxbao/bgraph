@@ -1,0 +1,30 @@
+Cucumber.js configuration and glue can share a root with a Ruby project. A Ruby manifest alone must not claim the features.
+-- base/Gemfile --
+source "https://rubygems.org"
+gem "rspec"
+-- base/spec/store_spec.rb --
+RSpec.describe("Store") {}
+-- base/features/orders.feature --
+Feature: Orders
+  Scenario: Read an order
+    Given an order
+-- base/features/step_definitions/orders.js --
+const { Given } = require('@cucumber/cucumber')
+Given('an order', function () {});
+-- base/package.json --
+{"name":"frontend","devDependencies":{"@cucumber/cucumber":"^12.0.0","vitest":"^3.0.0"}}
+-- base/frontend/store.test.js --
+test("store", () => {})
+-- base/cucumber.yml --
+default: "--format progress"
+-- head/cucumber.yml --
+default: "--format summary"
+-- head/features/orders.feature --
+Feature: Orders
+  Scenario: Read an existing order
+    Given an order
+-- want --
+notfull
+nowiden test_config_changed
+noselect <rb-all-cucumber:.>
+noselect features/orders.feature

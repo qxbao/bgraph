@@ -1,0 +1,21 @@
+A custom Cucumber profile can load support data whose file name resembles documentation.
+-- base/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/cucumber.yml --
+default: --require integration/steps integration
+-- base/integration/orders.feature --
+Feature: Orders
+  Scenario: Open an order
+-- base/integration/steps/steps.rb --
+Before { File.read(File.join("integration/data", ENV["FILE_NAME"])) }
+-- base/integration/data/example.md --
+first
+-- base/spec/other_spec.rb --
+RSpec.describe("other") {}
+-- head/integration/data/example.md --
+second
+-- want --
+scope graph
+select <rb-all-cucumber:.>
+noselect spec/other_spec.rb

@@ -15,7 +15,7 @@ import (
 // (file-granular, like Python). Dataset name forms handled:
 //
 //	desc - ./a/b_spec.rb[1:2:3], a/b_spec.rb:12, a/b_test.rb       "path"      (the path names the file)
-//	features/x.feature:70  Scenario: ...                            "cucumber"  (a Cucumber scenario: located, but not a Ruby test unit)
+//	features/x.feature:70  Scenario: ...                            "cucumber"  (the scenario location names the feature file)
 //	TestFoo#test_bar, Mod::TestFoo#test_bar, test_bar(TestFoo)      "minitest"  (method + class; Minitest/Test::Unit)
 //	test_bar, test_bar[data label]                                  "method"    (bare method name; test-unit data label stripped)
 //	TestFoo#test_: ctx ctx should do x.                             "shoulda"   (shoulda-context: class + contexts + should text)
@@ -27,7 +27,7 @@ import (
 // `test "x"` (method "test: x") and the test/should DSLs of asciidoctor or ActiveSupport (`test_` + the sanitized text) meet.
 // Asciidoctor's `context 'Foo bar'` blocks define classes `TestFooBar`, which are indexed as classes too.
 //
-// TODO(ruby-phase-2): required units for T1 are Files of every located name (ambiguous names require all of them, and record whether
+// Required units for T1 are derived from Files of every located name (ambiguous names require all of them, and record whether
 // requiring only PatchFiles removes a violation); for f2p_kind == "n2p" keep only names with InPatch; NotFound and NotUnit names are
 // reported as unmapped, never silently dropped.
 type RbTestLoc struct {
@@ -41,7 +41,7 @@ type RbTestLoc struct {
 	Via        string   `json:"via,omitempty"`         // how the candidates were found (path, method, class, method+class, desc, composite, template, label, ...)
 	Ambiguous  bool     `json:"ambiguous,omitempty"`
 	NotFound   bool     `json:"not_found,omitempty"`
-	NotUnit    bool     `json:"not_unit,omitempty"` // located in a file that is not a Ruby test unit (Cucumber feature, helper)
+	NotUnit    bool     `json:"not_unit,omitempty"` // located only in a helper file with no test-file includers
 	InPatch    bool     `json:"in_patch,omitempty"`
 }
 
@@ -627,7 +627,7 @@ func locateRb(t tree.Tree, ix *rbIndex, names []string, patch map[string]bool) [
 		case "path", "cucumber":
 			if t.Has(pn.path) {
 				files, l.Via = []string{pn.path}, "path"
-				l.NotUnit = pn.form == "cucumber" || !RbIsTestFile(pn.path)
+				l.NotUnit = pn.form == "path" && !RbIsTestFile(pn.path)
 			} else if files, l.Via = ix.descFiles(pn.desc); len(files) > 0 { // a description that merely mentions a file name
 				pn.form, l.Form = "desc", "desc"
 			}
