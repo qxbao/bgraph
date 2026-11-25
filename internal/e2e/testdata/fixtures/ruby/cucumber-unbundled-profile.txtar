@@ -1,0 +1,17 @@
+An unbundled Cucumber profile can run features in a custom directory while loading conventional glue.
+-- base/.config/cucumber.yaml --
+default: acceptance --require features
+-- base/acceptance/login.feature --
+Feature: Login
+  Scenario: Check a login
+    Given a login
+-- base/features/step_definitions/login.rb --
+Given("a login") {}
+-- head/acceptance/login.feature --
+Feature: Login
+  Scenario: Check a new login
+    Given a login
+-- want --
+notfull
+select <rb-all-cucumber:.>
+noselect acceptance/login.feature

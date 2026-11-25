@@ -1,0 +1,34 @@
+A Rails eager-load setting keeps all declared services reachable from application boot.
+-- base/bgraph.toml --
+[[ruby_autoload]]
+paths = ["app/services/**/*.rb"]
+reason = "Service names follow Zeitwerk naming, and the analyzer guards eager loads"
+-- base/Gemfile --
+gem "rails"
+-- base/config/application.rb --
+class Application < Rails::Application
+end
+-- base/config/environments/test.rb --
+Rails.application.configure do
+  config.eager_load = ENV["CI"] == "true"
+end
+-- base/app/services/email_sender.rb --
+class EmailSender
+  def deliver
+    :ok
+  end
+end
+-- base/spec/boot_spec.rb --
+require_relative "../config/application"
+-- base/spec/plain_spec.rb --
+43
+-- head/app/services/email_sender.rb --
+class EmailSender
+  def deliver
+    :failed
+  end
+end
+-- want --
+scope graph
+select spec/boot_spec.rb
+noselect spec/plain_spec.rb

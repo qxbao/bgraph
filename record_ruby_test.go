@@ -82,6 +82,7 @@ func TestRecordRubyIntegration(t *testing.T) {
 	root := testRepo(t, map[string]string{
 		"Gemfile":               rubyGemfile,
 		"Gemfile.lock":          lock,
+		"features/shop.feature": "Feature: Shop\n  Scenario: Describe the shop\n",
 		"lib/shop.rb":           "require \"shop/cart\"\nrequire \"shop/price\"\nrequire \"shop/report\"\n",
 		"lib/shop/cart.rb":      rubyCart,
 		"lib/shop/price.rb":     "module Price\n  def self.format(x)\n    \"$#{x}\"\n  end\n\n  def self.tax(x)\n    x * 2\n  end\nend\n",
@@ -114,6 +115,9 @@ func TestRecordRubyIntegration(t *testing.T) {
 	}
 	if sum.Units != 5 || len(recs) != 5 || len(warn) > 0 {
 		t.Fatalf("summary %+v, %d records, %v", sum, len(recs), warn)
+	}
+	if !slices.Contains(sum.Skipped, "features/shop.feature: Cucumber is handled by static selection") {
+		t.Errorf("recorded Ruby tests should report skipped Cucumber features: %v", sum.Skipped)
 	}
 	for _, u := range []string{"test/cart_test.rb", "test/price_test.rb", "test/report_test.rb", "test/sub_test.rb"} {
 		if r := by[u]; !r.Complete || !r.Pass {

@@ -158,7 +158,7 @@ func TestLocateRuby(t *testing.T) {
 		{[]string{"spec/rubocop/cop/b_spec.rb"}, "desc", false},
 		{[]string{"spec/fpm/x_spec.rb"}, "template", false},
 		{[]string{"fastlane/spec/zip_spec.rb"}, "path", false},
-		{[]string{"features/post_data.feature"}, "path", true},
+		{[]string{"features/post_data.feature"}, "path", false},
 		{nil, "", false},
 		{[]string{"test/test_url.rb"}, "class-inherited", false},
 		{[]string{"spec/rubocop/cop/c_spec.rb"}, "desc", false},

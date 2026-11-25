@@ -22,7 +22,7 @@ does not have (code that computes import paths, build logic it cannot evaluate),
 | Term | Meaning |
 |---|---|
 | **Change** | The files that differ between a *base* commit and a *head* (a commit, or the working tree including staged, unstaged and untracked files). |
-| **Test unit** | The smallest thing bgraph can select soundly: a test file (Node, Python, Ruby), a Cargo target, a Go package, a Maven module or Gradle project, an MSBuild project, or a PHP project. |
+| **Test unit** | The smallest thing bgraph can select soundly: a test file (Node, Python, Ruby, including Cucumber feature files), a Cargo target, a Go package, a Maven module or Gradle project, an MSBuild project, or a PHP project. |
 | **Project** | An ecosystem's project directory (`package.json`, Python project, Ruby project, crate, Go module, Maven module, .NET project...). Widenings are scoped to projects. |
 | **Ecosystem** | A language integration: it analyzes one tree into roles, edges, unresolved imports and test units, and classifies changes to its own manifests, configs and lockfiles. |
 | **Widening** | A record `{tier, reason, path, scope, detail, suggest}` explaining why the selection is wider than the graph alone. |
@@ -161,6 +161,8 @@ Some units are not files. Their unit's file list holds a single virtual node, an
 | `<rust:ID>` | a Cargo target (and package-level groups) |
 | `<go:dir>`, `<golib:dir>`, `<gomod:dir>` | a Go package's test unit, its library (what importers compile), and a module's module-level files |
 | `<rbreq:feature>`, `<rbload:file>` | a Ruby `require` / `load` target, matched by path suffix anywhere in the repository (tracked through glob edges) |
+| `<rb-autoload:dynamic>` | all declared lazy Ruby autoload targets, reached by indirect lookup, eager loading or uncertain scans |
+| `<rb-cucumber-support:DIR>` | shared Cucumber hooks, step definitions and nearby data of a Ruby project |
 | `<jvm:ID>` | a Maven module or Gradle project |
 | `<dotnet:project file>` | an MSBuild project |
 | `<npm:package>` | an external npm package (lockfile level L2 only) |

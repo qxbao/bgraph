@@ -1,0 +1,21 @@
+An unreferenced data file under features can be read by every feature through shared Ruby support, even if named like documentation.
+-- base/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/features/one.feature --
+Feature: One
+-- base/features/nested/two.feature --
+Feature: Two
+-- base/features/support/env.rb --
+Before { File.read(File.join("features/data", ENV["FILE_NAME"])) }
+-- base/features/data/example.md --
+first
+-- base/spec/other_spec.rb --
+RSpec.describe("other") {}
+-- head/features/data/example.md --
+second
+-- want --
+scope graph
+select features/one.feature
+select features/nested/two.feature
+noselect spec/other_spec.rb

@@ -143,8 +143,10 @@ type Params struct {
 	Changed []Changed // Guard's classification
 }
 
-// Narrowable reports whether the Ruby layer handles selected unit t: a Ruby test file (not a whole-project unit).
-func Narrowable(t model.SelectedTest, eco string) bool { return eco == Eco && !t.Whole }
+// Narrowable reports whether the Ruby layer records this unit's runner and granularity.
+func Narrowable(t model.SelectedTest, eco string) bool {
+	return eco == Eco && !t.Whole && path.Ext(t.Unit) != ".feature"
+}
 
 // Latest returns the latest Ruby record per unit for environment env.
 func Latest(recs []dynamic.Record, env string) map[string]dynamic.Record {

@@ -12,7 +12,7 @@
 //   - dotnet: units are MSBuild projects, one `dotnet test <project>` each; see dotnet.go.
 //   - maven, gradle: units are modules/projects built by the build tool; see maven.go and gradle.go.
 //   - go: units are package directories, one `go test ./<dir> ./<dir2>` per module (run in the module directory); see gotest.go.
-//   - rspec, rails, minitest, rake: Ruby test files, one command per (project, runner, Gemfile, -I directories); see ruby.go.
+//   - rspec, rails, minitest, rake, cucumber: Ruby test files and features, grouped by project and runner; see ruby.go.
 //   - swift: `swift test` skips unselected test modules in each package; see swift.go.
 //   - ctest, meson: test names in a configured build directory; see cpp.go.
 //   - dart, flutter: test files, one `dart test` / `flutter test` per package (integration tests separately); see dart.go.
@@ -31,6 +31,7 @@ import (
 	"github.com/qxbao/bgraph/internal/eco/cpp"
 	"github.com/qxbao/bgraph/internal/eco/dart"
 	"github.com/qxbao/bgraph/internal/eco/php"
+	"github.com/qxbao/bgraph/internal/eco/ruby"
 	"github.com/qxbao/bgraph/internal/eco/swift"
 	"github.com/qxbao/bgraph/internal/model"
 )
@@ -136,7 +137,7 @@ func Commands(sel model.Selection, opt Options) (Plan, error) {
 			dartTests = append(dartTests, t) // one command per package, integration tests apart (dart.go)
 			continue
 		}
-		if t.Runner == "rspec" || t.Runner == "rails" || t.Runner == "minitest" || t.Runner == "rake" {
+		if t.Runner == "rspec" || t.Runner == "rails" || t.Runner == "minitest" || t.Runner == "rake" || t.Runner == ruby.RunnerCucumber {
 			rbTests = append(rbTests, t) // dedicated adapter: bundle exec, minitest loader, -I directories (ruby.go)
 			continue
 		}

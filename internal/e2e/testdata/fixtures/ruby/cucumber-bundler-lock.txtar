@@ -1,0 +1,25 @@
+Lockfile changes in a nested Bundler project do not select another Ruby project or an adjacent Node test.
+-- base/apps/store/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/apps/store/Gemfile.lock --
+    cucumber (12.0.0)
+-- base/apps/store/features/orders.feature --
+Feature: Orders
+-- base/service/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/service/features/independent.feature --
+Feature: Independent
+-- base/apps/store/frontend/package.json --
+{"name":"frontend","devDependencies":{"vitest":"^1.0.0"}}
+-- base/apps/store/frontend/one.test.js --
+test("one", () => {})
+-- head/apps/store/Gemfile.lock --
+    cucumber (12.0.1)
+-- want --
+notfull
+widen lock_changed
+select apps/store/features/orders.feature
+noselect service/features/independent.feature
+noselect apps/store/frontend/one.test.js

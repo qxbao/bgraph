@@ -136,7 +136,7 @@ and per-task causes: [docs/benchmarks.md](docs/benchmarks.md).
 | <img src="https://cdn.simpleicons.org/dotnet" width="20" alt=""> | [**.NET** (C# / F# / VB)](docs/ecosystems/dotnet.md) | MSBuild project | `dotnet test` (VSTest, Microsoft.Testing.Platform) |
 | <img src="https://cdn.simpleicons.org/go" width="20" alt=""> | [**Go**](docs/ecosystems/go.md) | package | `go test`, modules, `go.work`, vendoring |
 | <img src="https://cdn.simpleicons.org/php" width="20" alt=""> | [**PHP**](docs/ecosystems/php.md) | Composer project | PHPUnit, Pest |
-| <img src="https://cdn.simpleicons.org/ruby" width="20" alt=""> | [**Ruby**](docs/ecosystems/ruby.md) | test file | RSpec, Minitest, Test::Unit, Rails test, Bundler |
+| <img src="https://cdn.simpleicons.org/ruby" width="20" alt=""> | [**Ruby**](docs/ecosystems/ruby.md) | test file | RSpec, Minitest, Test::Unit, Rails test, Cucumber, Bundler |
 | <img src="https://cdn.simpleicons.org/swift" width="20" alt=""> | [**Swift**](docs/ecosystems/swift.md) | SwiftPM test target or package | `swift test`, XCTest, Swift Testing |
 | <img src="https://cdn.simpleicons.org/cplusplus" width="20" alt=""> | [**C / C++**](docs/ecosystems/cpp.md) | registered test or build project | CMake/CTest and Meson |
 | <img src="https://cdn.simpleicons.org/dart" width="20" alt=""> | [**Dart / Flutter**](docs/ecosystems/dart.md) | test file | `dart test`, `flutter test`, pub workspaces, melos |
@@ -150,7 +150,7 @@ another's tests unless it is a shared input (CI definitions, toolchain pins).
 |---|---|
 | 🛡️ **Fail-closed by design** | Every uncertainty becomes a widening with a reason code (`dynamic_import`, `manifest_changed`, `lock_changed`, ...) and a suggested `bgraph.toml` entry. [Architecture](docs/architecture.md) |
 | 🔒 **Lockfile-aware** | `pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`, `bun.lock`, `Cargo.lock`, `uv.lock` and `poetry.lock` are compared by resolved dependency closure, so a bump selects only the projects it reaches; a `go.sum` change that only adds lines selects nothing. [Lockfiles](docs/lockfiles.md) |
-| ▶️ **Ready-to-run commands** | `bgraph command` prints runner commands for Vitest, pytest, Cargo, Maven, .NET, Go, PHPUnit, Pest, RSpec, Minitest, SwiftPM, CTest, Meson, `dart test`, `flutter test` and more. [CLI](docs/cli.md#command) |
+| ▶️ **Ready-to-run commands** | `bgraph command` prints runner commands for Vitest, pytest, Cargo, Maven, .NET, Go, PHPUnit, Pest, RSpec, Minitest, Cucumber, SwiftPM, CTest, Meson, `dart test`, `flutter test` and more. [CLI](docs/cli.md#command) |
 | 🔍 **Explainable** | `bgraph explain` shows the dependency chain behind every selected test; `bgraph unresolved` lists what could not be read. [CLI](docs/cli.md#explain) |
 | ⚡ **Dynamic layer** | Optional per-test records narrow widened selections further for Python and Node test files, for JVM and .NET test classes, for Ruby and PHP test files by the methods and functions they ran, and for Go test functions. [Dynamic layer](docs/dynamic-layer.md) |
 | 🧪 **Shadow mode for CI** | Keep running the full suite while `bgraph audit` reports any failure the selection would have skipped. [Example workflow](docs/ci/shadow-github-actions.yml) |

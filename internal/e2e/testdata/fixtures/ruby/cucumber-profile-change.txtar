@@ -1,0 +1,31 @@
+A Cucumber profile can compute its require paths, use nonstandard feature roots and change tags. Run the whole Cucumber invocation.
+-- base/apps/store/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/apps/store/.config/cucumber.yaml --
+default: --require integration/steps integration
+-- base/apps/store/integration/orders.feature --
+Feature: Orders
+  Scenario: Open order
+-- base/apps/store/integration/steps/steps.rb --
+Before {}
+-- base/apps/store/features/default.feature --
+Feature: Default
+-- base/service/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/service/features/independent.feature --
+Feature: Independent
+-- base/web/package.json --
+{"name":"web","devDependencies":{"vitest":"^1.0.0"}}
+-- base/web/one.test.js --
+test("one", () => {})
+-- head/apps/store/.config/cucumber.yaml --
+default: --require integration/steps --tags @smoke integration
+-- want --
+notfull
+widen test_config_changed
+select <rb-all-cucumber:apps/store>
+noselect apps/store/features/default.feature
+noselect service/features/independent.feature
+noselect web/one.test.js
