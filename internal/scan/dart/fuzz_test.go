@@ -14,6 +14,7 @@ var fuzzSeeds = []string{
 	"var a = 'x${b('${c}')}y' \"z$d\" r'$e' '''\nf\n''' r\"\"\"g\"\"\";",
 	"/* /* nested */ */ /// doc\n// line\nvoid main() { Isolate.spawnUri(Uri.parse('w.dart'), [], null); }",
 	"Isolate.spawnUri(u, [], null); final f = Isolate.spawnUri; mirrors.loadUri(Uri.file('x/$y.dart'));",
+	"spawnHybridCode('void hybridMain(c) {}'); spawnHybridUri('helper.dart'); final f = spawnHybridCode;",
 	"Process.run('dart', ['bin/x.dart']); TestProcess.start(Platform.resolvedExecutable, [p.join('bin', 'y.dart')]);",
 	"p.join(dir, 'fixtures', 'a.json'); path.join('test', name); matchesGoldenFile('goldens/$n.png');",
 	"#!/usr/bin/env dart\n\xef\xbb\xbfimport 'a.dart';",
@@ -59,8 +60,11 @@ func FuzzScan(f *testing.F) {
 			sites := 0
 			for _, seg := range Lex([]byte(src)).Segments {
 				for _, tk := range seg {
-					if tk.Kind == Word && (tk.Text == "spawnUri" || tk.Text == "loadUri") {
-						sites++
+					if tk.Kind == Word {
+						switch tk.Text {
+						case "spawnUri", "loadUri", "spawnHybridUri", "spawnHybridCode":
+							sites++
+						}
 					}
 				}
 			}

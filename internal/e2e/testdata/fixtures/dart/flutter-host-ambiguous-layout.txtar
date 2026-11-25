@@ -1,0 +1,36 @@
+Platform names alone do not identify a host app. The general fallback still covers ordinary package data.
+-- base/library/pubspec.yaml --
+name: library
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/library/linux/cases.txt --
+old case
+-- base/library/test/widget_test.dart --
+void main() {}
+-- base/dart_tooling/pubspec.yaml --
+name: dart_tooling
+dev_dependencies:
+  test: ^1.25.0
+-- base/dart_tooling/lib/main.dart --
+void main() {}
+-- base/dart_tooling/test/tool_test.dart --
+void main() {}
+-- base/dart_tooling/windows/cases.txt --
+old case
+-- base/other/pubspec.yaml --
+name: other
+dev_dependencies:
+  test: ^1.25.0
+-- base/other/test/other_test.dart --
+void main() {}
+-- head/library/linux/cases.txt --
+new case
+-- head/dart_tooling/windows/cases.txt --
+new case
+-- want --
+select library/test/widget_test.dart
+select dart_tooling/test/tool_test.dart
+noselect other/test/other_test.dart
+widen unknown_file
+scope module

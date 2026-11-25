@@ -1,0 +1,35 @@
+Code in a test runner's hybrid isolate can read a re-exported leaf without referencing any names from it.
+-- base/pubspec.yaml --
+name: fx
+dev_dependencies:
+  test: ^1.25.0
+-- base/lib/fx.dart --
+export 'a.dart';
+export 'b.dart';
+-- base/lib/a.dart --
+int alpha() => 1;
+-- base/lib/b.dart --
+int beta() => 2;
+-- base/test/reader_test.dart --
+import 'package:test/test.dart';
+import 'package:fx/fx.dart' show beta;
+void main() {
+  test('hybrid reader', () async {
+    final channel = spawnHybridCode('''
+      import 'dart:io';
+      void hybridMain(channel) {
+        channel.sink.add(File(['lib', 'a.dart'].join('/')).readAsStringSync());
+      }
+    ''');
+    expect(await channel.stream.first, contains('=> 1'));
+    expect(beta(), 2);
+  });
+}
+-- base/test/unrelated_test.dart --
+void main() {}
+-- head/lib/a.dart --
+int alpha() => 3;
+-- want --
+scope graph
+select test/reader_test.dart
+noselect test/unrelated_test.dart

@@ -1,0 +1,27 @@
+An unindexed dependency can observe a loaded export via reflection without spelling its name in the test.
+-- base/pubspec.yaml --
+name: fx
+dependencies:
+  external_reader:
+    path: ../external_reader
+-- base/lib/fx.dart --
+export 'a.dart';
+export 'b.dart';
+-- base/lib/a.dart --
+library first_leaf;
+int alpha() => 1;
+-- base/lib/b.dart --
+int beta() => 2;
+-- base/test/reader_test.dart --
+import 'package:fx/fx.dart' show beta;
+import 'package:external_reader/reader.dart';
+void main() { assert(beta() == 2 && readExport() == 1); }
+-- base/test/unrelated_test.dart --
+void main() {}
+-- head/lib/a.dart --
+library first_leaf;
+int alpha() => 3;
+-- want --
+scope graph
+select test/reader_test.dart
+noselect test/unrelated_test.dart

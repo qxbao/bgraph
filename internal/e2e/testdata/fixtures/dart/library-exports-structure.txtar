@@ -1,0 +1,30 @@
+A change to a nested export file is a direct dependency of every barrel importer.
+-- base/pubspec.yaml --
+name: fx
+-- base/lib/fx.dart --
+export 'src/api.dart';
+-- base/lib/src/api.dart --
+export 'a.dart' show alpha;
+export 'b.dart';
+-- base/lib/src/a.dart --
+int alpha() => 1;
+int alternate() => 1;
+-- base/lib/src/b.dart --
+int beta() => 2;
+-- base/test/alpha_test.dart --
+import 'package:fx/fx.dart';
+void main() { assert(alpha() == 1); }
+-- base/test/beta_test.dart --
+import 'package:fx/fx.dart';
+void main() { assert(beta() == 2); }
+-- base/test/direct_test.dart --
+import 'package:fx/src/b.dart';
+void main() { assert(beta() == 2); }
+-- head/lib/src/api.dart --
+export 'a.dart' hide alternate;
+export 'b.dart';
+-- want --
+scope graph
+select test/alpha_test.dart
+select test/beta_test.dart
+noselect test/direct_test.dart

@@ -1,5 +1,4 @@
-A Flutter android/ directory with Gradle files: the change falls to the general rules, and the integration tests
-that run the host app are still selected.
+An Android host source change selects both the Flutter integration test and the Gradle app unit.
 -- base/pubspec.yaml --
 name: app
 environment:
@@ -49,4 +48,8 @@ void main() => test('o', () {});
 class MainActivity { }
 -- want --
 select integration_test/app_test.dart
+select gradle:android:app
+noselect test/widget_test.dart
 noselect other/test/o_test.dart
+scope graph
+nowiden unknown_import

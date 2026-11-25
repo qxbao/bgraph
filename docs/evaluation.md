@@ -102,7 +102,7 @@ suites run in a Linux arm64 container. Median selection is selected units / all 
 | Ruby | 117 (dev 61, holdout 56); all 836 fetched tasks: 0 violations | 0 | 2 % (holdout 4 %) | 1.000 | 2.6 % (holdout 5.6 %) |
 | Swift | 10 (holdout) | 0 | 40 % | 0.977 | 50 % over the 6 non-full tasks |
 | C and C++ | 86 (holdout) | 0 | 15 % | 1.000 | 4.1 % over the 73 non-full tasks |
-| Dart / Flutter | 274 (dev 185, holdout 89) | 0 (31 oracle artefacts, hand-classified) | 6 % (holdout 3 %) | 0.850 (holdout 0.849) | 1.1 % (holdout 3.4 %) |
+| Dart / Flutter | 274 (dev 185, holdout 89) | 0 (31 oracle artefacts, hand-classified) | 6 % (holdout 3 %) | 0.852 (holdout 0.849) | 1.1 % (holdout 3.4 %) |
 
 Swift's holdout covers six Longtail-SWE repositories. Four tasks widened to the full suite because they changed a global
 input. In the dev set, 13 of 16 tasks could be evaluated. One upstream repository was unavailable, one task used
@@ -156,6 +156,25 @@ Notes per ecosystem:
   `pubspec.yaml` widens the package and its dependents. Median selection time 645 ms. During the evaluation, relative
   imports under `lib/` were found to resolve against the library's `package:` URI (`..` stops at `lib/`); both readings
   now count.
+
+#### Dart export and host-input checks
+
+A focused Dart 3.14.1 run used five suites around nested library exports. Three valid leaf edits selected one, one
+and two suites, respectively, down from four each. The selector included every suite that failed on the native
+runner. A return type error in an unused leaf made all four importing suites fail to load, including one using a
+`show` import. The selector kept all four. Separate probes exercised interpolated identifiers, reflection through an
+external package, and file reads from a `package:test` hybrid isolate.
+
+The paired T1 rerun evaluated 274 tasks, with the same 31 oracle artefacts and 17 full selections as the baseline.
+The median selected fraction was 0.852 overall and 0.849 on holdout in both runs. Two tasks selected more tests
+because existing C/C++ scan uncertainty reached Flutter host dependencies. The T2 rerun confirmed 27 killed mutants
+across petitparser, dart-lang/core and melos with zero violations. The native Dart runner discovered all 65 bgraph
+units in the seven package runs.
+
+Flutter fixtures check integration-only selection for conventional native files. The fixtures retain widget tests
+that read those files, Gradle tests, and the enclosing app's integration tests when a native build can consume files
+in a nested package. Flutter 3.44.0 command setup and device routing were checked against the tool source.
+[Flutter test command](https://github.com/flutter/flutter/blob/3.44.0/packages/flutter_tools/lib/src/commands/test.dart#L876-L905)
 
 ### T2 mutation summary
 

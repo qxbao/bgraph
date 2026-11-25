@@ -30,8 +30,8 @@ or Flutter toolchain.
   imports between them resolve through the package names above.
 - **Flutter.** A package that depends on an SDK package of the Flutter SDK (`sdk: flutter` under `dependencies`,
   `dev_dependencies` or `dependency_overrides`: `flutter`, `flutter_test`, `integration_test`...) runs with `flutter test`.
-  Its platform directories (`android/`, `ios/`, `macos/`, `linux/`, `windows/`, `web/`) are not Dart code: their files
-  follow the general rules (another ecosystem's project, such as a Gradle build under `android/`, or the package).
+  The app's platform directories are `android/`, `ios/`, `macos/`, `linux/`, `windows/` and `web/`. Conventional
+  host build inputs in these directories reach the app's integration tests. [Flutter host-app inputs](#flutter-host-app-inputs)
 - **Mixed repositories.** A Dart package next to (or at the same root as) a Node, Python or other project is supported.
   Dart manifest, configuration and lockfile widenings select Dart units only.
 - A repository with no `pubspec.yaml` costs nothing: its `.dart` files, if any, follow the general rules.
@@ -53,7 +53,8 @@ anything is selected or widened. Integration tests stay file units.
 ## What a unit depends on
 
 - **Directives.** `import`, `export`, `part` and `import augment` of a test file and, transitively, of every file they
-  reach. Every URI of a conditional directive counts (`import 'stub.dart' if (dart.library.io) 'io.dart'` depends on
+  reach. Some [export-only libraries](#narrowing-through-library-exports) can use the names in the importing file.
+  Every URI of a conditional directive counts (`import 'stub.dart' if (dart.library.io) 'io.dart'` depends on
   both), and a deferred import is an ordinary import. `dart:` URIs and `package:` URIs of a name that no package in the
   repository declares are external (the lockfile and manifests cover them). `part of` adds nothing: the library already
   depends on its part.
@@ -83,6 +84,33 @@ anything is selected or widened. Integration tests stay file units.
   transitively (`dart run tool:gen` runs an executable of a package in the resolution).
 - **Isolates.** `Isolate.spawnUri` (and `loadUri` of `dart:mirrors`) with a literal URI depends on the spawned file.
 
+### Narrowing through library exports
+
+An export-only library aggregates declarations with `export` directives. When every export resolves to an indexed
+file and the chain ends in independent, compiler-checkable declarations, bgraph uses the identifiers in each importing
+file to select the leaves it depends on. This includes prefixed uses and string interpolation. Export directives can
+include one `show` or `hide` clause. A change to the export file itself still reaches all its importers.
+
+The checked leaf declarations are empty classes, typed constants and typed zero-argument functions whose values are
+booleans, small decimal numbers or plain strings. Conditional, ambiguous or unresolved exports, parts, augmentations
+and other declarations retain the full dependency. The analysis also retains it when a source scan is uncertain or
+the repository imports code that can observe a library without naming the declaration locally, such as `dart:mirrors`,
+`dart:io` or an unindexed package.
+The conventional Pub `package:test/test.dart` API is allowed with the standard runner resolution. An error in an
+unused re-export can still prevent an importing test from loading, even with a `show` clause on its import.
+
+### Flutter host-app inputs
+
+Conventional native sources and build files of a Flutter app reach the app's `integration_test/` units. Widget tests
+still follow explicit imports, literals and declared assets. Dart code that can read platform inputs also retains a
+dependency. Shared Android or Apple tooling files can affect both kinds of tests during Flutter command setup.
+
+Plugins, add-to-app modules and packages with native asset hooks can contribute to their dependents' builds, so their
+platform input changes can reach those tests as well. Arbitrary files under a platform directory retain the general
+file rules. A separately owned Dart package inside a platform directory can still supply inputs to the enclosing
+native build. Other ecosystems can independently claim files under a Flutter app, for example a Gradle build under
+`android/`.
+
 ## Changes to manifests, configuration and lockfiles
 
 The comparison is structural: both versions are parsed, so comments and formatting never widen.
@@ -110,9 +138,10 @@ the change, which widen every package below their directory.
 | A directive or `package:` target that is not in the tree, but whose package is | edge to the missing path (adding the file later is caught) and `unknown_import` at module tier: any change in the importer's package or the target's package selects the importer's dependents |
 | The missing file looks generated (`*.g.dart`, `*.freezed.dart`, `*.mocks.dart`, `*.gr.dart`, `*.config.dart`, `*.pb*.dart`...) or is in `package:flutter_gen/` | the same, with detail `generated_output`; a [`[[generated]]`](../configuration.md#generated) entry whose `outputs` match it replaces the widening by its `sources` |
 | A URI that leaves the repository, is absolute, or has another scheme | `unknown_import` at module tier for the importer's package |
-| `Isolate.spawnUri` / `loadUri` with a computed URI, or a tear-off | `dynamic_import` at module tier: a changed `.dart` file of the package selects the file's dependents (a test file no reference reaches does not count) |
+| `Isolate.spawnUri`, `loadUri` or `spawnHybridUri` with a computed URI or a tear-off, or `spawnHybridCode` | `dynamic_import` at module tier: a changed `.dart` file of the package selects the file's dependents (a test file no reference reaches does not count) |
 | An unterminated string, comment or interpolation, or a directive with an interpolated URI | `uncertain_scan`: any change in the repository selects the file's dependents |
-| An integration test of a Flutter app with platform directories | a change under `android/`, `ios/`, `macos/`, `linux/`, `windows/` or `web/` also selects it (`unknown_import` detail: it runs the host app) |
+| A host build can use a platform file, link or nested package that bgraph cannot assign exclusively to the host | `unknown_import` triggers the host's integration tests, in addition to the general file rules |
+| Dart code may read a host input using a computed path | `unknown_import` triggers the tests that can reach the file-reading code when a host input changes |
 
 `bgraph unresolved` lists them.
 
@@ -134,6 +163,13 @@ cd app && flutter test integration_test/app_test.dart
 cd packages/core && dart test test/format_test.dart
 ```
 
+A Kotlin source change in the app's Android host can produce a single device test command.
+
+```sh
+# scope: graph
+(cd app && flutter test integration_test/app_test.dart)
+```
+
 ## Addressing units in bgraph.toml
 
 In a [`[[rule]]`](../configuration.md#rule), use a test file path (the unit ID), a glob over test files
@@ -149,9 +185,8 @@ whole-package unit ID such as `<dart-all-tests:packages/core>`. A target that ma
   workspace, because the workspace shares one resolution.
 - Library code that names its own configuration by a literal (a tool that reads `pubspec.yaml` or `dart_test.yaml` from
   the working directory) links that file to every test that imports the tool.
-- A file that nothing references by an import, a literal or the `flutter:` section (an ARB file, an undeclared data
-  file, a native source) widens to its package through the general `unreferenced_file` and `unknown_file` rules.
-  Changes under a Flutter app's platform directories follow the general rules too.
+- A file that nothing references by an import, a literal, the `flutter:` section or the host build graph widens to
+  its package through the general `unreferenced_file` and `unknown_file` rules.
 - A missing generated file widens its importer to every change of the package until a `[[generated]]` entry describes
   it.
 - Paths built at run time by other means than a literal head, a literal tail or a `join(...)` call are not followed; a

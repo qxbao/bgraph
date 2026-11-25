@@ -1,0 +1,21 @@
+A computed read of a conventional Android file retains the consuming widget test.
+-- base/pubspec.yaml --
+name: app
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/lib/main.dart --
+void main() {}
+-- base/test/widget_test.dart --
+void main() {}
+-- base/test/schema_test.dart --
+import 'dart:i%6f';
+void main() => File(['android','app','src','main','AndroidManifest.xml'].join(Platform.pathSeparator)).readAsStringSync();
+-- base/android/app/src/main/AndroidManifest.xml --
+<manifest/>
+-- head/android/app/src/main/AndroidManifest.xml --
+<manifest><application/></manifest>
+-- want --
+select test/schema_test.dart
+noselect test/widget_test.dart
+scope graph

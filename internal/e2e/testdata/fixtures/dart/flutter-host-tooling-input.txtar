@@ -1,0 +1,28 @@
+Flutter prepares platform tooling before both kinds of test, including Android local properties.
+-- base/pubspec.yaml --
+name: app
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/lib/main.dart --
+void main() {}
+-- base/test/widget_test.dart --
+void main() {}
+-- base/integration_test/app_test.dart --
+void main() {}
+-- base/android/local.properties --
+flutter.sdk=/old/flutter
+-- base/other/pubspec.yaml --
+name: other
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/other/test/other_test.dart --
+void main() {}
+-- head/android/local.properties --
+flutter.sdk=/new/flutter
+-- want --
+select test/widget_test.dart
+select integration_test/app_test.dart
+noselect other/test/other_test.dart
+scope graph

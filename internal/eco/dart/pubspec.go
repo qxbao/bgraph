@@ -43,6 +43,32 @@ type repo struct {
 	root    map[string]string   // member → its workspace root (direct parent workspace)
 }
 
+// localPackage proves that a package: name is the current package or an explicit in-tree path dependency.
+// A same-named package in the checkout can otherwise differ from the one that Pub actually loads.
+func (r *repo) localPackage(p *pkg, name string) bool {
+	if p == nil || name == "" {
+		return false
+	}
+	if p.name == name {
+		return true
+	}
+	if p.member || p.hasWsKey {
+		return false // other workspace members can override this name
+	}
+	sections := []any{p.overridden, p.raw["dependency_overrides"], p.raw["dev_dependencies"], p.raw["dependencies"]}
+	for _, section := range sections {
+		if specs, ok := section.(map[string]any); ok {
+			if spec, exists := specs[name]; exists {
+				details, _ := spec.(map[string]any)
+				depPath, _ := details["path"].(string)
+				dir, valid := resolveRel(p.dir, depPath)
+				return depPath != "" && valid && r.pkgs[dir] != nil && r.pkgs[dir].name == name
+			}
+		}
+	}
+	return false
+}
+
 // skipSegment: a directory whose pubspec files are tool caches or generated platform links, never packages of the repo.
 func skipSegment(seg string) bool {
 	return strings.HasPrefix(seg, ".") && seg != "." && seg != ".."

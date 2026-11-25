@@ -23,7 +23,10 @@
 //     conditional directive counts. A missing target is an edge to its path plus an unknown_import at module tier scoped to
 //     the importer's package and the target's package (detail generated_output for generated-looking names, unless a
 //     [[generated]] entry of bgraph.toml names its sources).
+//   - an export-only library may narrow to the names used by the importer when every leaf can be checked independently;
 //   - a test depends on every flutter_test_config.dart in its directory and the ancestors up to the package root;
+//   - a Flutter integration test depends on the app's platform inputs. Shared tooling, native dependencies and tests
+//     that can read those inputs have their own edges;
 //   - the test files of a package and of every in-repository package depending on it depend on <dartassets:dir>, which
 //     depends on the paths the package's `flutter:` section names (assets, fonts, shaders): Flutter bundles them;
 //   - when a package of the tree is one the test runners load themselves (path, args, collection...: runnerDeps), the tests
@@ -60,7 +63,7 @@ const (
 )
 
 // AnalyzerVersion: bump whenever the analysis rules change to invalidate stored analysis snapshots.
-const AnalyzerVersion = "dart-8"
+const AnalyzerVersion = "dart-13"
 
 // Eco is the Dart ecosystem.
 type Eco struct {
@@ -83,24 +86,25 @@ func IsWholeUnitID(id string) bool {
 	return strings.HasPrefix(id, wholePrefix) && strings.HasSuffix(id, ">") && len(id) > len(wholePrefix)+1
 }
 
-// platformDirs are the Flutter host-app directories an integration test runs.
-var platformDirs = []string{"android", "ios", "macos", "linux", "windows", "web"}
-
 type edgeKey struct {
 	from, to string
 	kind     model.EdgeKind
 }
 
 type builder struct {
-	t     tree.Tree
-	sc    eco.Scanner
-	r     *repo
-	a     *eco.Analysis
-	rules *rules.File
-	seen  map[edgeKey]bool
-	useq  map[string]bool
-	hooks map[string][]string // package dir → its hook files
-	units map[string][]string // package dir → its file units
+	namespaces       map[string]*model.DartScan
+	opaqueExportUse  bool
+	trackHostReaders bool
+	hostReaders      []string
+	t                tree.Tree
+	sc               eco.Scanner
+	r                *repo
+	a                *eco.Analysis
+	rules            *rules.File
+	seen             map[edgeKey]bool
+	useq             map[string]bool
+	hooks            map[string][]string // package dir → its hook files
+	units            map[string][]string // package dir → its file units
 }
 
 // Analyze analyzes tree t.
@@ -112,6 +116,7 @@ func (e *Eco) Analyze(ctx context.Context, t tree.Tree, sc eco.Scanner) (*eco.An
 	}
 	a.Roles = map[string]model.Role{}
 	b := &builder{t: t, sc: sc, r: r, a: a, rules: e.rules, seen: map[edgeKey]bool{}, useq: map[string]bool{}, hooks: map[string][]string{}, units: map[string][]string{}}
+	b.namespaces = map[string]*model.DartScan{}
 	dirs := slices.Sorted(maps.Keys(r.pkgs))
 	for _, d := range dirs {
 		a.Projects = append(a.Projects, eco.Project{Eco: Name, Dir: d, Name: r.pkgs[d].name})
@@ -122,9 +127,14 @@ func (e *Eco) Analyze(ctx context.Context, t tree.Tree, sc eco.Scanner) (*eco.An
 		}
 	}
 	files := map[string][]string{} // package dir → its .dart files
+	hostFiles := map[string]*flutterHostFiles{}
+	flutterAncestors := r.flutterAncestors()
 	var stray []string
 	for _, f := range t.Files() {
 		p := r.nearest(path.Dir(f))
+		if p != nil {
+			addFlutterHostPath(hostFiles, flutterAncestors[p.dir], p, f, false)
+		}
 		if path.Ext(f) == ".dart" {
 			if p == nil {
 				stray = append(stray, f)
@@ -138,6 +148,14 @@ func (e *Eco) Analyze(ctx context.Context, t tree.Tree, sc eco.Scanner) (*eco.An
 			a.Roles[f] = role
 		}
 	}
+	for _, link := range tree.LinksOf(t) {
+		if link.Dir || link.Problem != "" {
+			if p := r.nearest(path.Dir(link.Path)); p != nil {
+				addFlutterHostPath(hostFiles, flutterAncestors[p.dir], p, link.Path, true)
+			}
+		}
+	}
+	b.trackHostReaders = len(hostFiles) > 0
 	for _, d := range dirs {
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -149,6 +167,8 @@ func (e *Eco) Analyze(ctx context.Context, t tree.Tree, sc eco.Scanner) (*eco.An
 	}
 	b.assets()
 	b.runnerPackages()
+	b.flutterHosts(hostFiles)
+	b.libraryExports()
 	slices.SortFunc(a.Edges, func(x, y model.Edge) int {
 		if c := strings.Compare(x.From, y.From); c != 0 {
 			return c
@@ -216,15 +236,6 @@ func (b *builder) pkg(p *pkg, files []string) {
 		if integration || cfg.opaque == "" {
 			units = append(units, f)
 			b.a.Tests = append(b.a.Tests, model.TestUnit{Eco: Name, ID: f, Project: p.dir, Files: []string{f}, Runner: runner})
-		}
-		if integration {
-			for _, pd := range platformDirs {
-				if d := joinDir(p.dir, pd); b.t.IsDir(d) {
-					b.a.Unresolved = append(b.a.Unresolved, model.Unresolved{File: f, Spec: pd + "/", Class: model.UnresolvedUnknown,
-						ScopeTier: model.TierModule, ScopeDir: d,
-						Detail: "an integration test runs the Flutter host app built from " + d})
-				}
-			}
 		}
 	}
 	b.units[p.dir] = units

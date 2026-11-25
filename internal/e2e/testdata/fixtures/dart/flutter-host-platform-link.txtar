@@ -1,0 +1,24 @@
+A new dangling link under the platform project can affect the enclosing Flutter integration suite.
+-- base/pubspec.yaml --
+name: app
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/lib/main.dart --
+void main() {}
+-- base/integration_test/app_test.dart --
+void main() {}
+-- base/other/pubspec.yaml --
+name: other
+-- base/other/test/other_test.dart --
+void main() {}
+-- base/android/settings.gradle --
+include ':app'
+-- base/android/app/build.gradle --
+apply plugin: 'com.android.application'
+-- link:head/android/app/src/main/kotlin/Other.kt --
+../../../../../not-in-the-tree.kt
+-- want --
+select integration_test/app_test.dart
+noselect other/test/other_test.dart
+widen symlink_outside

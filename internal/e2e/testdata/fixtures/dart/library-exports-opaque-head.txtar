@@ -1,0 +1,25 @@
+The changed leaf can cause a compile error for any consumer of the barrel.
+-- base/pubspec.yaml --
+name: fx
+-- base/lib/fx.dart --
+export 'a.dart';
+export 'b.dart';
+-- base/lib/a.dart --
+int alpha() => 1;
+-- base/lib/b.dart --
+int beta() => 2;
+-- base/test/alpha_test.dart --
+import 'package:fx/fx.dart';
+void main() { assert(alpha() == 1); }
+-- base/test/beta_test.dart --
+import 'package:fx/fx.dart' show beta;
+void main() { assert(beta() == 2); }
+-- base/test/unrelated_test.dart --
+void main() {}
+-- head/lib/a.dart --
+int alpha() => 'wrong type';
+-- want --
+scope graph
+select test/alpha_test.dart
+select test/beta_test.dart
+noselect test/unrelated_test.dart

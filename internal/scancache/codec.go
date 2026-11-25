@@ -108,6 +108,29 @@ func encode(r model.ScanResult) []byte {
 			b = appendStr(b, s)
 		}
 	}
+	if d := r.Dart; d != nil {
+		b = append(b, 3)
+		b = appendStrings(b, d.Words)
+		b = appendStrings(b, d.Standalone)
+		b = binary.AppendUvarint(b, uint64(len(d.Exports)))
+		for _, ex := range d.Exports {
+			b = appendStr(b, ex.URI)
+			var hide byte
+			if ex.Hide {
+				hide = 1
+			}
+			b = append(b, hide)
+			b = appendStrings(b, ex.Names)
+		}
+	}
+	return b
+}
+
+func appendStrings(b []byte, values []string) []byte {
+	b = binary.AppendUvarint(b, uint64(len(values)))
+	for _, s := range values {
+		b = appendStr(b, s)
+	}
 	return b
 }
 
@@ -147,6 +170,19 @@ func (r *reader) str() string {
 	s := string(r.b[:n])
 	r.b = r.b[n:]
 	return s
+}
+
+func (r *reader) strs() []string {
+	n := r.uvarint()
+	if r.err != nil || n > uint64(len(r.b)) {
+		r.err = errCodec
+		return nil
+	}
+	var out []string
+	for i := uint64(0); i < n && r.err == nil; i++ {
+		out = append(out, r.str())
+	}
+	return out
 }
 
 func decode(b []byte) (model.ScanResult, error) {
@@ -190,6 +226,8 @@ func decode(b []byte) (model.ScanResult, error) {
 			out.Rust, err = decodeRust(r)
 		case tag == 2 && out.Go == nil:
 			out.Go, err = decodeGo(r)
+		case tag == 3 && out.Dart == nil:
+			out.Dart, err = decodeDart(r)
 		default:
 			err = errCodec
 		}
@@ -198,6 +236,18 @@ func decode(b []byte) (model.ScanResult, error) {
 		}
 	}
 	return out, nil
+}
+
+func decodeDart(r *reader) (*model.DartScan, error) {
+	d := &model.DartScan{Words: r.strs(), Standalone: r.strs()}
+	n := r.uvarint()
+	if r.err != nil || n > uint64(len(r.b)) {
+		return nil, errCodec
+	}
+	for i := uint64(0); i < n && r.err == nil; i++ {
+		d.Exports = append(d.Exports, model.DartExport{URI: r.str(), Hide: r.byte() != 0, Names: r.strs()})
+	}
+	return d, r.err
 }
 
 func decodeRust(r *reader) (*model.RustScan, error) {

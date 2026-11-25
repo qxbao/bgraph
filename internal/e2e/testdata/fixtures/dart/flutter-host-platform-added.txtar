@@ -1,0 +1,23 @@
+The first file in a new host platform directory is a dependency of the integration test.
+-- base/pubspec.yaml --
+name: app
+dependencies:
+  flutter:
+    sdk: flutter
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+-- base/lib/main.dart --
+void main() {}
+-- base/integration_test/app_test.dart --
+import 'package:integration_test/integration_test.dart';
+import 'package:app/main.dart' as app;
+void main() { IntegrationTestWidgetsFlutterBinding.ensureInitialized(); app.main(); }
+-- base/test/widget_test.dart --
+void main() {}
+-- head/ios/Runner/AppDelegate.swift --
+class AppDelegate {}
+-- want --
+select integration_test/app_test.dart
+noselect test/widget_test.dart
+scope graph

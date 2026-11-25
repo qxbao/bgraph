@@ -1,0 +1,25 @@
+A nested Dart project within Android assets can supply files to the outer host build.
+-- base/pubspec.yaml --
+name: app
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/lib/main.dart --
+void main() {}
+-- base/integration_test/app_test.dart --
+void main() {}
+-- base/test/widget_test.dart --
+void main() {}
+-- base/android/app/src/main/assets/fixture/pubspec.yaml --
+name: fixture
+-- base/android/app/src/main/assets/fixture/data.txt --
+before
+-- base/android/app/src/main/assets/fixture/test/fixture_test.dart --
+void main() {}
+-- head/android/app/src/main/assets/fixture/data.txt --
+after
+-- want --
+select integration_test/app_test.dart
+select android/app/src/main/assets/fixture/test/fixture_test.dart
+noselect test/widget_test.dart
+widen unknown_file

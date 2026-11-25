@@ -139,7 +139,7 @@ and per-task causes: [docs/benchmarks.md](docs/benchmarks.md).
 | <img src="https://cdn.simpleicons.org/ruby" width="20" alt=""> | [**Ruby**](docs/ecosystems/ruby.md) | test file | RSpec, Minitest, Test::Unit, Rails test, Cucumber, Bundler |
 | <img src="https://cdn.simpleicons.org/swift" width="20" alt=""> | [**Swift**](docs/ecosystems/swift.md) | SwiftPM test target or package | `swift test`, XCTest, Swift Testing |
 | <img src="https://cdn.simpleicons.org/cplusplus" width="20" alt=""> | [**C / C++**](docs/ecosystems/cpp.md) | registered test or build project | CMake/CTest and Meson |
-| <img src="https://cdn.simpleicons.org/dart" width="20" alt=""> | [**Dart / Flutter**](docs/ecosystems/dart.md) | test file | `dart test`, `flutter test`, pub workspaces, melos |
+| <img src="https://cdn.simpleicons.org/dart" width="20" alt=""> | [**Dart / Flutter**](docs/ecosystems/dart.md) | test file | `dart test`, `flutter test`, pub workspaces, melos, Flutter host-app inputs |
 
 Polyglot repositories work out of the box: every ecosystem selects independently, and a change in one does not select
 another's tests unless it is a shared input (CI definitions, toolchain pins).
