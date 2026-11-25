@@ -158,7 +158,7 @@ const (
 )
 
 // AnalyzerVersion: bump whenever the analysis rules change to invalidate stored analysis snapshots.
-const AnalyzerVersion = "ruby-8"
+const AnalyzerVersion = "ruby-9"
 
 // Eco is the Ruby ecosystem.
 type Eco struct {

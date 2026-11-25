@@ -5,6 +5,8 @@ import (
 	"path"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/qxbao/bgraph/internal/classify"
 	"github.com/qxbao/bgraph/internal/eco"
 	"github.com/qxbao/bgraph/internal/model"
@@ -12,6 +14,8 @@ import (
 
 // RunnerCucumber is the Ruby Cucumber runner.
 const RunnerCucumber = "cucumber"
+
+const cucumberProfileData = "<rb-cucumber-profile-data>"
 
 // CucumberWholeUnitID identifies a project whose native Cucumber command is the unit.
 func CucumberWholeUnitID(dir string) string { return "<rb-all-cucumber:" + dir + ">" }
@@ -50,6 +54,29 @@ func hasCucumber(a *eco.Analysis, project string) bool {
 
 func cucumberGem(name string) bool {
 	return name == "cucumber" || name == "cucumber-rails"
+}
+
+func (b *builder) javascriptCucumber(dir string, profiles []string) bool {
+	if b.foreign[dir] {
+		if pkg, err := b.t.Read(path.Join(dir, "package.json")); err == nil {
+			if bytes.Contains(pkg, []byte(`"@cucumber/cucumber"`)) ||
+				bytes.Contains(pkg, []byte(`"cucumber"`)) || bytes.Contains(pkg, []byte(`"@wdio/cucumber-framework"`)) {
+				return true
+			}
+		}
+	}
+	if len(profiles) == 0 {
+		return false
+	}
+	// Cucumber.js accepts an options mapping as its default profile.
+	// Ruby Cucumber expects a command-line string or array of arguments.
+	src, err := b.t.Read(profiles[0])
+	var profile struct{ Default any }
+	if err != nil || yaml.Unmarshal(src, &profile) != nil {
+		return false
+	}
+	_, mapping := profile.Default.(map[string]any)
+	return mapping
 }
 
 func (b *builder) bundledCucumber(project string) bool {
@@ -132,12 +159,6 @@ func (b *builder) addCucumber(files []string) {
 		}
 		s.whole = len(s.profiles) != 0
 		if s.whole || b.t.IsDir(path.Join(project.Dir, "features")) {
-			if b.foreign[project.Dir] {
-				if pkg, err := b.t.Read(path.Join(project.Dir, "package.json")); err == nil {
-					s.foreignGlue = bytes.Contains(pkg, []byte(`"@cucumber/cucumber"`)) ||
-						bytes.Contains(pkg, []byte(`"cucumber"`)) || bytes.Contains(pkg, []byte(`"@wdio/cucumber-framework"`))
-				}
-			}
 			suites[project.Dir] = s
 		}
 	}
@@ -206,11 +227,12 @@ func (b *builder) addCucumber(files []string) {
 		}
 	}
 	whole := map[string]string{}
+	profiled := false
 	for _, project := range b.a.Projects {
 		dir := project.Dir
 		s := suites[dir]
 		if s == nil || len(s.features) == 0 && len(s.profiles) == 0 ||
-			s.foreignGlue && !s.rubyGlue && !b.bundledCucumber(dir) {
+			!s.rubyGlue && (s.foreignGlue || b.javascriptCucumber(dir, s.profiles)) && !b.bundledCucumber(dir) {
 			continue
 		}
 		for _, p := range s.profiles {
@@ -218,7 +240,12 @@ func (b *builder) addCucumber(files []string) {
 		}
 		if s.whole {
 			id := CucumberWholeUnitID(dir)
-			whole[dir] = id
+			if len(s.profiles) != 0 {
+				profiled = true
+				b.edge(id, cucumberProfileData, model.EdgeImplicit, "Cucumber profile may load data from custom paths", 0)
+			} else {
+				whole[dir] = id
+			}
 			b.a.Tests = append(b.a.Tests, model.TestUnit{Eco: Name, ID: id, Project: dir, Runner: RunnerCucumber,
 				Config: b.gemfileFor(dir), Files: []string{id}, Whole: true})
 			continue
@@ -237,14 +264,24 @@ func (b *builder) addCucumber(files []string) {
 			b.edge(p, shared, model.EdgeImplicit, "Cucumber loads shared support", 0)
 		}
 	}
-	if len(whole) == 0 {
+	if !profiled && len(whole) == 0 {
 		return
 	}
 	for _, p := range files {
+		if b.a.Roles[p] != "" {
+			continue
+		}
+		// Whole suites already run on meaningful changes. A profile can
+		// also make an apparent document anywhere in the repo test data.
+		doc := classify.Doc(p)
+		if profiled && (doc || rubyDoc(path.Base(p))) {
+			b.edge(cucumberProfileData, p, model.EdgeImplicit, "possible Cucumber profile data", 0)
+		}
+		if !doc || len(whole) == 0 {
+			continue
+		}
 		dir := b.project(path.Dir(p))
-		if id := whole[dir]; id != "" && b.a.Roles[p] == "" && classify.Doc(p) && b.inRuby(p) {
-			// A profile may load data from an arbitrary path in the project.
-			// Even an apparent document can be a Cucumber fixture.
+		if id := whole[dir]; id != "" && b.inRuby(p) {
 			b.edge(id, p, model.EdgeImplicit, "data read by an unfiltered Cucumber suite", 0)
 		}
 	}

@@ -60,7 +60,7 @@ func autoloadReflection(name string) bool {
 	switch name {
 	case "const_get", "const_set", "const_defined?", "constants", "const_missing", "const_source_location", "remove_const",
 		"constantize", "safe_constantize", "autoload", "autoload?", "autoload_relative", "autoload_paths", "autoload_once_paths",
-		"autoload_lib", "autoload_lib_once", "eager_load", "eager_load_all", "eager_load_dir", "eager_load_namespace",
+		"autoload_lib", "autoload_lib_once", "load_file", "eager_load", "eager_load_all", "eager_load_dir", "eager_load_namespace",
 		"eval", "class_eval", "module_eval", "instance_eval", "class_exec", "module_exec", "instance_exec", "class_attribute",
 		"send", "__send__", "public_send", "method", "public_method", "instance_method", "public_instance_method",
 		"descendants", "subclasses", "ObjectSpace", "inflect", "inflector", "collapse", "on_load", "on_unload", "to_prepare",

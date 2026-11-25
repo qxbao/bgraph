@@ -1,0 +1,54 @@
+Zeitwerk can load a declared file directly without the caller naming its constant.
+-- base/bgraph.toml --
+[[ruby_autoload]]
+paths = ["lib/services/*.rb"]
+reason = "Use conventional constant names and modeled Zeitwerk loads"
+-- base/Gemfile --
+source "https://rubygems.org"
+gem "zeitwerk"
+gem "rspec"
+-- base/lib/loader.rb --
+require "zeitwerk"
+LOADER = Zeitwerk::Loader.new
+LOADER.push_dir(File.join(__dir__, "services"))
+LOADER.setup
+-- base/lib/warmup.rb --
+require_relative "loader"
+def warmup(name)
+  LOADER.load_file(File.join(__dir__, "services", "#{name}.rb"))
+end
+-- base/lib/services/email_sender.rb --
+class EmailSender
+  def deliver
+    :ok
+  end
+end
+-- base/spec/warmup_spec.rb --
+require_relative "../lib/warmup"
+RSpec.describe "warming up a service by file" do
+  it "loads the service" do
+    expect(warmup("email_sender").new.deliver).to eq(:ok)
+  end
+end
+-- base/spec/direct_spec.rb --
+require_relative "../lib/loader"
+RSpec.describe "loading a service by constant" do
+  it "loads the service" do
+    expect(EmailSender.new.deliver).to eq(:ok)
+  end
+end
+-- base/spec/plain_spec.rb --
+RSpec.describe "an unrelated test" do
+  it("still passes") { expect(43).to eq(43) }
+end
+-- head/lib/services/email_sender.rb --
+class EmailSender
+  def deliver
+    :failed
+  end
+end
+-- want --
+scope graph
+select spec/direct_spec.rb
+select spec/warmup_spec.rb
+noselect spec/plain_spec.rb

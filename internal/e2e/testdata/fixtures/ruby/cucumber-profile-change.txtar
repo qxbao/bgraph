@@ -1,4 +1,6 @@
 A Cucumber profile can compute its require paths, use nonstandard feature roots and change tags. Run the whole Cucumber invocation.
+-- base/package.json --
+{"name":"workspace","private":true,"devDependencies":{"@cucumber/cucumber":"^12.0.0"}}
 -- base/apps/store/Gemfile --
 source "https://rubygems.org"
 gem "cucumber"

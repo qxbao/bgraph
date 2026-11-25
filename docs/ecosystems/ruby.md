@@ -66,11 +66,15 @@ a Rails application (a project with `bin/rails` and `config/application.rb`); `m
 A Ruby project's `features/**/*.feature` files are Cucumber units. Each unit runs every scenario in that file. Each
 depends on the shared support tree, including hooks, step definitions, parameter types, nearby data and any code the
 support files load. A step definition can satisfy any feature, so changing it selects every feature of the suite.
+If a suite uses a Cucumber.js options mapping as its default profile, bgraph requires Ruby glue under `features/` or a
+bundled Cucumber gem to classify the suite as Ruby.
 
 A `cucumber.yml` or `cucumber.yaml` at the project root, under `.config/`, or under `config/` delegates discovery to
 Cucumber. Tracked glue under `vendor/gems/*/cucumber` or `vendor/plugins/*/cucumber` and overlapping nested Ruby projects
 under `features/` also use `<rb-all-cucumber:DIR>`. Like other whole-suite units, this unit runs on any meaningful change.
 The Cucumber command honors its default profile, including any custom feature paths, requires and filters.
+When a profile is present, changes to tracked documentation can also select the suite because a profile can load fixtures
+outside its project directory.
 
 ## What a unit depends on
 
@@ -118,11 +122,11 @@ lookup, inheritance, acronyms and ambiguous names without evaluating Ruby. Expli
 edges remain in the graph. Files outside the declaration retain the loader's blanket dependencies, including Rails templates
 and other non-Ruby inputs.
 
-Known reflective calls such as `const_get` and `constantize`, eager-load operations and uncertain Ruby scans connect to all
-declared targets. A computed `push_dir` keeps its original dependency. Adding or removing a declared file or changing code
-outside method bodies widens to Ruby tests across the repository (`config_is_code`), since another project can load the same
-file. Omit files reached via custom constant names, boot callbacks, framework conventions such as routes and STI, templates,
-or lookup in external code from a declaration unless their dependencies are already covered. See
+Known reflective calls such as `const_get` and `constantize`, Zeitwerk's `load_file`, eager-load operations and uncertain Ruby
+scans connect to all declared targets. A computed `push_dir` keeps its original dependency. Adding or removing a declared
+file or changing code outside method bodies widens to Ruby tests across the repository (`config_is_code`), since another
+project can load the same file. Omit files reached via custom constant names, boot callbacks, framework conventions such as
+routes and STI, templates, or lookup in external code from a declaration unless their dependencies are already covered. See
 [Rails autoloading](https://guides.rubyonrails.org/autoloading_and_reloading_constants.html) and [Zeitwerk](https://github.com/fxn/zeitwerk).
 
 ### Other dependencies

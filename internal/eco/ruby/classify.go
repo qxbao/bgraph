@@ -17,6 +17,10 @@ var harmlessDotfiles = map[string]bool{".rubocop.yml": true, ".rubocop_todo.yml"
 var nativeSrc = map[string]bool{".c": true, ".h": true, ".cc": true, ".cpp": true, ".cxx": true, ".hpp": true, ".hh": true,
 	".java": true, ".m": true, ".y": true}
 
+func rubyDoc(name string) bool {
+	return strings.HasPrefix(name, "CHANGELOG") || strings.HasSuffix(name, ".rdoc")
+}
+
 func hasRuby(a *eco.Analysis) bool {
 	if a == nil {
 		return false
@@ -127,7 +131,7 @@ func (e *Eco) ClassifyChange(p string, base, head tree.Tree, a *eco.Analysis) ([
 		if isProject(a, dir) {
 			return nil, true
 		}
-	case strings.HasPrefix(name, "CHANGELOG") || strings.HasSuffix(name, ".rdoc"):
+	case rubyDoc(name):
 		if inProj && !underDataDir(p, true) {
 			return nil, true
 		}
