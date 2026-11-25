@@ -1,0 +1,17 @@
+Changing a host input for a Flutter app with no integration tests leaves the widget suite unaffected.
+-- base/pubspec.yaml --
+name: app
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/lib/main.dart --
+void main() {}
+-- base/test/widget_test.dart --
+void main() {}
+-- base/windows/runner/main.cpp --
+int main() { return 0; }
+-- head/windows/runner/main.cpp --
+int main() { return 1; }
+-- want --
+noselect test/widget_test.dart
+scope none

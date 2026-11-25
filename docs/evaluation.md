@@ -102,7 +102,7 @@ suites run in a Linux arm64 container. Median selection is selected units / all 
 | Ruby | 117 (dev 61, holdout 56); all 836 fetched tasks: 0 violations | 0 | 2 % (holdout 4 %) | 1.000 | 2.6 % (holdout 5.6 %) |
 | Swift | 10 (holdout) | 0 | 40 % | 0.977 | 50 % over the 6 non-full tasks |
 | C and C++ | 86 (holdout) | 0 | 15 % | 1.000 | 4.1 % over the 73 non-full tasks |
-| Dart / Flutter | 274 (dev 185, holdout 89) | 0 (31 oracle artefacts, hand-classified) | 6 % (holdout 3 %) | 0.850 (holdout 0.849) | 1.1 % (holdout 3.4 %) |
+| Dart / Flutter | 274 (dev 185, holdout 89) | 0 (31 oracle artefacts, hand-classified) | 6 % (holdout 3 %) | 0.852 (holdout 0.849) | 1.1 % (holdout 3.4 %) |
 
 Swift's holdout covers six Longtail-SWE repositories. Four tasks widened to the full suite because they changed a global
 input. In the dev set, 13 of 16 tasks could be evaluated. One upstream repository was unavailable, one task used
@@ -156,6 +156,25 @@ Notes per ecosystem:
   `pubspec.yaml` widens the package and its dependents. Median selection time 645 ms. During the evaluation, relative
   imports under `lib/` were found to resolve against the library's `package:` URI (`..` stops at `lib/`); both readings
   now count.
+
+#### Dart export and host-input checks
+
+A focused Dart 3.14.1 run used five suites around nested library exports. Three valid leaf edits selected one, one
+and two suites, respectively, down from four each. The selector included every suite that failed on the native
+runner. A return type error in an unused leaf made all four importing suites fail to load, including one using a
+`show` import. The selector kept all four. Separate probes exercised interpolated identifiers, reflection through an
+external package, and file reads from a `package:test` hybrid isolate.
+
+The paired T1 rerun evaluated 274 tasks, with the same 31 oracle artefacts and 17 full selections as the baseline.
+The median selected fraction was 0.852 overall and 0.849 on holdout in both runs. Two tasks selected more tests
+because existing C/C++ scan uncertainty reached Flutter host dependencies. The T2 rerun confirmed 27 killed mutants
+across petitparser, dart-lang/core and melos with zero violations. The native Dart runner discovered all 65 bgraph
+units in the seven package runs.
+
+Flutter fixtures check integration-only selection for conventional native files. The fixtures retain widget tests
+that read those files, Gradle tests, and the enclosing app's integration tests when a native build can consume files
+in a nested package. Flutter 3.44.0 command setup and device routing were checked against the tool source.
+[Flutter test command](https://github.com/flutter/flutter/blob/3.44.0/packages/flutter_tools/lib/src/commands/test.dart#L876-L905)
 
 ### T2 mutation summary
 
@@ -212,6 +231,20 @@ mutated copy, so a mutant breaks `dart test` itself.
 | C and C++ | Linux arm64 configured 37 project instances at 26 revisions. The 29 nonempty suites (22 CTest, 7 Meson) were covered by whole-project units at the correct build roots. Eight registered no tests. Separate literal fixtures matched both named tests and both direct source links for each backend. |
 | Dart | 3 repositories, 7 packages: the test files `dart test` loads in a whole run are exactly bgraph's units (66 of 66, none missing, none extra); a `@TestOn('browser')` file skipped on the VM is the one explained extra seen in a probe |
 | Node | Vitest / Jest `--changed` ⊆ bgraph on every non-full T2 mutant. Comparison with general code-graph tools: [Benchmarks](benchmarks.md) |
+
+#### Ruby Cucumber and constant autoloading
+
+- The capped Ruby T1 regression scored 117 tasks across seven repositories, with 115 graph or scoped selections, two full
+  selections (`global_input`) and zero violations. Two more tasks had no oracle. Explicit scenario paths from two Jekyll
+  tasks both passed the Cucumber T1 check. Opaque profile paths require a separate native discovery check.
+- Jekyll's conventional discovery matched all 28 native Cucumber 9.2.1 feature files. Aruba's default profile matched all
+  102 native Cucumber 12.0.1 feature files through the generated whole-suite command. A conventional nested feature ran
+  through the generated filtered command and loaded its step from a sibling directory. A separate native Cucumber fixture
+  selected all failures from six shared-support mutations. A Jekyll permalink mutation failed four feature files out of 28,
+  all covered by the shared-support selection.
+- With opt-in `[[ruby_autoload]]`, six Zeitwerk 2.8.3 method mutations each failed one of six Minitest files and selected exactly
+  that file. The six declared names matched Zeitwerk's native constant paths. A method rename selected all six. A Rails 8.1
+  service mutation selected the single failing test in a two-test native application.
 
 ### Replay
 

@@ -17,6 +17,10 @@ var harmlessDotfiles = map[string]bool{".rubocop.yml": true, ".rubocop_todo.yml"
 var nativeSrc = map[string]bool{".c": true, ".h": true, ".cc": true, ".cpp": true, ".cxx": true, ".hpp": true, ".hh": true,
 	".java": true, ".m": true, ".y": true}
 
+func rubyDoc(name string) bool {
+	return strings.HasPrefix(name, "CHANGELOG") || strings.HasSuffix(name, ".rdoc")
+}
+
 func hasRuby(a *eco.Analysis) bool {
 	if a == nil {
 		return false
@@ -70,6 +74,9 @@ func (e *Eco) ClassifyChange(p string, base, head tree.Tree, a *eco.Analysis) ([
 	if !hasRuby(a) || skipPath(p) {
 		return nil, false
 	}
+	if why := e.autoloadChange(p, base, head); why != "" {
+		return []model.Widening{w(model.ReasonConfigIsCode, p, ".", why)}, true
+	}
 	name := path.Base(p)
 	dir := path.Dir(p)
 	proj, inProj := projectOf(a, p)
@@ -92,6 +99,10 @@ func (e *Eco) ClassifyChange(p string, base, head tree.Tree, a *eco.Analysis) ([
 			return nil, false
 		}
 		return []model.Widening{w(model.ReasonLockChanged, p, dir, "Bundler lockfile at level L0 (resolved versions not compared)")}, true
+	case inProj && (name == "cucumber.yml" || name == "cucumber.yaml") && isCucumberProfile(p, proj) && hasCucumber(a, proj):
+		wd := w(model.ReasonTestConfig, p, proj, "Cucumber profiles can change feature paths and loaded support")
+		wd.Exact = true
+		return []model.Widening{wd}, true
 	case name == ".rspec" || name == ".rspec-local" || name == ".rspec-parallel" || name == "spec.opts" && path.Base(dir) == "spec":
 		d := dir
 		if name == "spec.opts" {
@@ -120,7 +131,7 @@ func (e *Eco) ClassifyChange(p string, base, head tree.Tree, a *eco.Analysis) ([
 		if isProject(a, dir) {
 			return nil, true
 		}
-	case strings.HasPrefix(name, "CHANGELOG") || strings.HasSuffix(name, ".rdoc"):
+	case rubyDoc(name):
 		if inProj && !underDataDir(p, true) {
 			return nil, true
 		}

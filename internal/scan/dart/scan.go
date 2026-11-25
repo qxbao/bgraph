@@ -7,9 +7,10 @@
 //   - import / export / part directives → dart_import / dart_export / dart_part with Spec = the URI as written. Every URI of a
 //     conditional directive (`import 'a.dart' if (dart.library.io) 'b.dart'`) is its own ref with the same line. A deferred
 //     import is an ordinary dart_import. `import augment 'x.dart'` → dart_part with Suffix "augment". `part of` is not reported.
-//   - Isolate.spawnUri / loadUri (dart:mirrors) → dart_load. Spec is the URI when the first argument is a string literal or
+//   - Isolate.spawnUri / loadUri (dart:mirrors) / spawnHybridUri → dart_load. Spec is the URI when the first argument is a string literal or
 //     Uri.parse / Uri.file / Uri.directory of one (Suffix "file" for the last two: a file path, not a URI); otherwise the ref
 //     is Dynamic with Spec = the static head of an interpolated literal (often empty). A tear-off without a call is Dynamic.
+//     spawnHybridCode always loads dynamically because its string argument holds Dart code.
 //   - Process.run / runSync / start and TestProcess.start → dart_process (Spec empty): the file runs a program.
 //   - String literals that may name a path → dart_string: a literal without interpolation containing '/' or '.' (Spec its
 //     value; "dart:" URIs, URLs and literals with control characters are dropped); an interpolated literal → Dynamic with Spec
@@ -44,6 +45,9 @@ func Scan(src []byte) model.ScanResult {
 	for _, seg := range lx.Segments {
 		ts := merge(seg)
 		extract(ts, &out)
+	}
+	if !out.Uncertain {
+		out.Dart = namespace(src, lx, out.Imports)
 	}
 	return out
 }
@@ -191,8 +195,10 @@ func extract(ts []tok, out *model.ScanResult) {
 				}
 				add(model.ImportRef{Kind: kind, Spec: ts[u].Text, Suffix: suffix, Line: t.Line})
 			}
-		case "spawnUri", "loadUri":
+		case "spawnUri", "loadUri", "spawnHybridUri":
 			add(loadRef(ts, i))
+		case "spawnHybridCode":
+			add(model.ImportRef{Kind: model.ImportDartLoad, Line: t.Line, Dynamic: true})
 		case "run", "runSync", "start":
 			if isPunct(ts, i-1, ".") && (isWord(ts, i-2, "Process") || t.Text == "start" && isWord(ts, i-2, "TestProcess")) {
 				add(model.ImportRef{Kind: model.ImportDartProcess, Line: t.Line})

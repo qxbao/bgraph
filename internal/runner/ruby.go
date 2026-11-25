@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/qxbao/bgraph/internal/eco/ruby"
 	"github.com/qxbao/bgraph/internal/model"
 )
 
@@ -29,6 +30,7 @@ func rubyConfig(c string) (gemfile string, libs []string) {
 //   - minitest: [bundle exec] ruby -I<dir>... -e "ARGV.each { |f| require File.expand_path(f) }" <files>
 //     (whole project: [bundle exec] rake test)
 //   - rake:     [bundle exec] rake test                  (a whole-project unit)
+//   - cucumber: [bundle exec] cucumber --require features <files> (whole project: [bundle exec] cucumber)
 //
 // `bundle exec` is used when the project has a Gemfile (at or above its directory).
 func rubyCommands(tests []model.SelectedTest, opt Options) ([]Command, []string) {
@@ -65,6 +67,11 @@ func rubyCommands(tests []model.SelectedTest, opt Options) ([]Command, []string)
 		case "rspec":
 			prefix = append(append([]string(nil), bundle...), "rspec")
 			whole = prefix
+		case ruby.RunnerCucumber:
+			whole = append(append([]string(nil), bundle...), "cucumber")
+			// Some Cucumber versions search for support relative to the selected
+			// feature. Load the full conventional support tree in every batch.
+			prefix = append(append([]string(nil), whole...), "--require", "features")
 		case "rails":
 			prefix = []string{"bin/rails", "test"}
 			whole = prefix

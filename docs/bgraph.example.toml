@@ -193,6 +193,14 @@ none = true
 reason = "load_plugins() imports entry points of installed packages, never a module of this repo"
 
 # ---------------------------------------------------------------------------------------------------------------------
+# [[ruby_autoload]]: follow named Ruby constants for selected lazy autoload files.                         (NARROWING)
+# Keep the declaration scoped to conventional files reached through scanned Ruby references and explicit loads.
+
+[[ruby_autoload]]
+paths = ["app/services/**/*.rb"]
+reason = "The test environment loads these services lazily through ordinary Ruby constants"
+
+# ---------------------------------------------------------------------------------------------------------------------
 # [dynamic_layer]: narrow widened selections with recorded test dependencies (docs/dynamic-layer.md).        (NARROWING)
 #
 # Off by default. When the static graph widens (a dynamic import, an unreferenced file...), the dynamic layer may remove

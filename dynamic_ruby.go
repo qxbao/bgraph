@@ -8,6 +8,7 @@ import (
 
 	"github.com/qxbao/bgraph/internal/dynamic"
 	"github.com/qxbao/bgraph/internal/dynamic/rbdyn"
+	"github.com/qxbao/bgraph/internal/eco/ruby"
 	"github.com/qxbao/bgraph/internal/model"
 	"github.com/qxbao/bgraph/internal/rules"
 	"github.com/qxbao/bgraph/internal/selector"
@@ -126,6 +127,10 @@ func (ix *Index) recordRuby(ctx context.Context, opt RecordOptions, rf *rules.Fi
 		}
 		if u.Whole {
 			skipped = append(skipped, u.ID+": whole-project unit (test files unknown)")
+			continue
+		}
+		if u.Runner == ruby.RunnerCucumber {
+			skipped = append(skipped, u.ID+": Cucumber is handled by static selection")
 			continue
 		}
 		todo = append(todo, rbdyn.Unit{ID: u.ID, Project: u.Project, Runner: u.Runner, Config: u.Config})

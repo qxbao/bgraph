@@ -173,6 +173,22 @@ type ScanResult struct {
 	Rust *RustScan `json:"rust,omitempty"`
 	// Go is set by the Go scanner only (.go files) on a certain result; the imports are in Imports (Kind import, Spec = import path).
 	Go *GoScan `json:"go,omitempty"`
+	// Dart is the optional namespace information extracted from a Dart file.
+	Dart *DartScan `json:"dart,omitempty"`
+}
+
+// DartScan describes the syntactic subset used for narrowing through re-exports.
+type DartScan struct {
+	Words      []string     `json:"words,omitempty"`      // sorted identifiers, including those in interpolation
+	Standalone []string     `json:"standalone,omitempty"` // names of independent declarations with known syntax and types
+	Exports    []DartExport `json:"exports,omitempty"`    // directives of a library consisting entirely of exports
+}
+
+// DartExport is one unconditional export with at most one show or hide clause.
+type DartExport struct {
+	URI   string   `json:"uri"`
+	Names []string `json:"names,omitempty"`
+	Hide  bool     `json:"hide,omitempty"`
 }
 
 // GoScan is what the Go scanner extracts from one .go file besides its imports.

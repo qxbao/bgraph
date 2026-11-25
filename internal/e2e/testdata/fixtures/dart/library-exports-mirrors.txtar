@@ -1,0 +1,28 @@
+An alternate spelling of the mirrors URI can still reach an exported name by string.
+-- base/pubspec.yaml --
+name: fx
+-- base/lib/fx.dart --
+export 'alpha.dart';
+export 'beta.dart';
+-- base/lib/alpha.dart --
+library first_leaf;
+int alpha() => 1;
+-- base/lib/beta.dart --
+int beta() => 1;
+-- base/test/mirrors_test.dart --
+import 'dart:m%69rrors';
+import 'package:fx/fx.dart';
+void main() {
+  final lib = currentMirrorSystem().libraries.values.firstWhere((m) => m.simpleName == Symbol('first_leaf'));
+  assert(lib.invoke(Symbol('alpha'), []).reflectee == 1);
+}
+-- base/test/direct_test.dart --
+import 'package:fx/beta.dart';
+void main() { assert(beta() == 1); }
+-- head/lib/alpha.dart --
+library first_leaf;
+int alpha() => 2;
+-- want --
+scope graph
+select test/mirrors_test.dart
+noselect test/direct_test.dart

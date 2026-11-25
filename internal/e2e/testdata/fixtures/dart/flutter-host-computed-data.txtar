@@ -1,0 +1,19 @@
+A widget test can read ordinary data in a platform-named directory by a computed path.
+-- base/pubspec.yaml --
+name: app
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/lib/main.dart --
+void main() {}
+-- base/test/widget_test.dart --
+import 'dart:io';
+void main() => File(['web', 'data.txt'].join(Platform.pathSeparator)).readAsStringSync();
+-- base/web/data.txt --
+before
+-- head/web/data.txt --
+after
+-- want --
+select test/widget_test.dart
+widen unknown_file
+scope module

@@ -1,0 +1,41 @@
+All features load Ruby under features, including a step file in a sibling subtree and its transitive source dependency.
+-- base/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/features/one/test.feature --
+Feature: One
+  Scenario: First
+    Given one thing
+-- base/features/two/test.feature --
+Feature: Two
+  Scenario: Second
+    Given another thing
+-- base/features/one/custom_steps.rb --
+require_relative "../../lib/one"
+ParameterType(name: "object", regexp: /\w+/, transformer: -> (s) { s })
+Before { Object.new }
+Given(/one thing/) { One.new }
+-- base/features/step_definitions/shared.rb --
+Given("another thing") {}
+-- base/lib/one.rb --
+class One
+  COUNT = 1
+end
+-- base/spec/other_spec.rb --
+RSpec.describe("other") {}
+-- base/service/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/service/features/independent.feature --
+Feature: Independent
+  Scenario: Unrelated
+-- head/lib/one.rb --
+class One
+  COUNT = 2
+end
+-- want --
+scope graph
+select features/one/test.feature
+select features/two/test.feature
+noselect spec/other_spec.rb
+noselect service/features/independent.feature

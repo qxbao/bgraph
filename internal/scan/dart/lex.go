@@ -35,6 +35,8 @@ const MaxFileSize = 4 << 20
 // (each its own sequence, so that an expression inside a string does not interleave with the enclosing argument list).
 type Lexed struct {
 	Segments [][]Token
+	// InterpolatedNames are the identifiers of $name interpolations (unlike ${...}, they have no token segment).
+	InterpolatedNames []string
 	// Problem is non-empty when the lexer could not finish (unterminated string, comment or interpolation, too deep).
 	Problem string
 }
@@ -280,9 +282,11 @@ func (lx *lexer) str(seg int, raw bool, depth int) {
 			}
 			interp = true
 			lx.i++
+			name := lx.i
 			for lx.i < len(src) && identPart(src[lx.i]) && src[lx.i] != '$' {
 				lx.i++
 			}
+			lx.out.InterpolatedNames = append(lx.out.InterpolatedNames, string(src[name:lx.i]))
 			tailStart = val.Len()
 		default:
 			if c == '\n' {

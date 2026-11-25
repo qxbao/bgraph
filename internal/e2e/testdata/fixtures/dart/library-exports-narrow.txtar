@@ -1,0 +1,36 @@
+Nested library exports link importers to the standalone leaves whose names they use.
+-- base/pubspec.yaml --
+name: fx
+dev_dependencies:
+  test: ^1.25.0
+-- base/lib/fx.dart --
+export 'src/api.dart';
+-- base/lib/src/api.dart --
+export 'a.dart';
+export 'b.dart' show beta;
+-- base/lib/src/a.dart --
+int alpha() => 1;
+const int label = 1;
+-- base/lib/src/b.dart --
+int beta() => 2;
+-- base/lib/src/value.dart --
+import 'api.dart' as api;
+int value() => api.alpha();
+-- base/test/alpha_test.dart --
+import 'package:fx/src/value.dart';
+void main() { assert(value() == 1); }
+-- base/test/beta_test.dart --
+import 'package:test/test.dart';
+import 'package:fx/fx.dart' as fx;
+void main() { test('beta', () { expect(fx.beta(), 2); }); }
+-- base/test/interpolated_test.dart --
+import 'package:fx/fx.dart';
+void main() { assert('$label🚀' == '1🚀'); }
+-- head/lib/src/a.dart --
+int alpha() => 3;
+const int label = 3;
+-- want --
+scope graph
+select test/alpha_test.dart
+select test/interpolated_test.dart
+noselect test/beta_test.dart

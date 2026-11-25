@@ -10,12 +10,15 @@ import (
 
 func TestDartScanRoundTrip(t *testing.T) {
 	tr := tree.NewMapTree(map[string]string{
-		"lib/a.dart":  "import 'package:x/y.dart' if (dart.library.io) 'io.dart';\nexport 'b.dart';\npart 'a.g.dart';\nimport augment 'c.dart';\n",
-		"test/t.dart": "void main() { File('test/fixtures/$n.json'); Isolate.spawnUri(u, [], null); Process.run('dart', ['bin/x.dart']); }\n",
-		"bad.dart":    "var s = 'x",
+		"lib/a.dart":    "import 'package:x/y.dart' if (dart.library.io) 'io.dart';\nexport 'b.dart';\npart 'a.g.dart';\nimport augment 'c.dart';\n",
+		"test/t.dart":   "void main() { File('test/fixtures/$n.json'); Isolate.spawnUri(u, [], null); Process.run('dart', ['bin/x.dart']); }\n",
+		"consumer.dart": "import 'barrel.dart';\nvoid main() { print('$alpha'); }\n",
+		"barrel.dart":   "export 'leaf.dart' hide other;\n",
+		"leaf.dart":     "int alpha() => 1;\n",
+		"bad.dart":      "var s = 'x",
 	})
 	c := New()
-	for _, p := range []string{"lib/a.dart", "test/t.dart", "bad.dart"} {
+	for _, p := range tr.Files() {
 		r, err := c.Scan(tr, p)
 		if err != nil {
 			t.Fatalf("%s: %v", p, err)

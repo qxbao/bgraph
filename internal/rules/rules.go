@@ -80,6 +80,12 @@ type Dynamic struct {
 	Reason      string
 }
 
+// RubyAutoload declares Ruby files reached through ordinary constant lookup or modeled loads.
+type RubyAutoload struct {
+	Paths  []*glob.Pattern
+	Reason string
+}
+
 // Config keys a [[config]] may replace, by kind.
 var (
 	AliasKeys       = []string{"alias", "moduleNameMapper"}
@@ -126,14 +132,15 @@ type DynamicLayer struct {
 
 // File is the validated content of bgraph.toml.
 type File struct {
-	Rules     []Rule
-	Generated []Generated
-	Configs   []Config
-	Dynamics  []Dynamic
-	Options   Options
-	Dynamic   DynamicLayer // [dynamic_layer]
-	Lockfile  Lockfile     // [lockfile]
-	Path      string       // path of the file read; empty if there is no file
+	Rules        []Rule
+	Generated    []Generated
+	Configs      []Config
+	Dynamics     []Dynamic
+	RubyAutoload []RubyAutoload
+	Options      Options
+	Dynamic      DynamicLayer // [dynamic_layer]
+	Lockfile     Lockfile     // [lockfile]
+	Path         string       // path of the file read; empty if there is no file
 }
 
 // Lockfile levels (docs/lockfiles.md).
@@ -185,6 +192,10 @@ type rawFile struct {
 		SysPathOnly bool     `toml:"sys_path_only"`
 		Reason      string   `toml:"reason"`
 	} `toml:"dynamic"`
+	RubyAutoload []struct {
+		Paths  []string `toml:"paths"`
+		Reason string   `toml:"reason"`
+	} `toml:"ruby_autoload"`
 	Options struct {
 		MaxChanged *int64 `toml:"max_changed"`
 	} `toml:"options"`
@@ -405,6 +416,25 @@ func Parse(name string, data []byte) (*File, error) {
 			out.Loads = append(out.Loads, p)
 		}
 		f.Dynamics = append(f.Dynamics, out)
+	}
+
+	for i, a := range raw.RubyAutoload {
+		at := fmt.Sprintf("%s: ruby_autoload[%d]", name, i)
+		if len(a.Paths) == 0 || strings.TrimSpace(a.Reason) == "" {
+			return nil, fmt.Errorf("%s: 'paths' and 'reason' are required", at)
+		}
+		out := RubyAutoload{Reason: a.Reason}
+		for _, g := range a.Paths {
+			if strings.TrimSpace(g) == "" {
+				return nil, fmt.Errorf("%s.paths: empty glob", at)
+			}
+			p, err := glob.Compile(g)
+			if err != nil {
+				return nil, fmt.Errorf("%s.paths: %w", at, err)
+			}
+			out.Paths = append(out.Paths, p)
+		}
+		f.RubyAutoload = append(f.RubyAutoload, out)
 	}
 
 	if m := raw.Options.MaxChanged; m != nil {

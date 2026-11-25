@@ -1,0 +1,36 @@
+A shared Dart helper can read either app's local platform paths while the tests run in their own package.
+-- base/reader/pubspec.yaml --
+name: reader
+-- base/reader/lib/reader.dart --
+import 'dart:io';
+String read(List<String> path) => File(path.join(Platform.pathSeparator)).readAsStringSync();
+-- base/app/pubspec.yaml --
+name: app
+dependencies:
+  flutter:
+    sdk: flutter
+  reader:
+    path: ../reader
+-- base/app/lib/main.dart --
+void main() {}
+-- base/app/test/schema_test.dart --
+import '../../reader/lib/reader.dart';
+void main() => read(['android','app','src','main','AndroidManifest.xml']);
+-- base/app/android/app/src/main/AndroidManifest.xml --
+<manifest/>
+-- base/other/pubspec.yaml --
+name: other
+dependencies:
+  flutter:
+    sdk: flutter
+  reader:
+    path: ../reader
+-- base/other/test/schema_test.dart --
+import 'package:reader/reader.dart';
+void main() => read(['android','app','src','main','AndroidManifest.xml']);
+-- head/app/android/app/src/main/AndroidManifest.xml --
+<manifest><application/></manifest>
+-- want --
+select app/test/schema_test.dart
+noselect other/test/schema_test.dart
+scope graph

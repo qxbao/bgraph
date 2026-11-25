@@ -1,0 +1,43 @@
+A Flutter plugin's native implementation is built into the app that depends on it.
+-- base/plugin/pubspec.yaml --
+name: example_plugin
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: example.plugin
+        pluginClass: ExamplePlugin
+-- base/plugin/android/src/main/kotlin/ExamplePlugin.kt --
+class ExamplePlugin
+-- base/plugin/test/plugin_test.dart --
+void main() {}
+-- base/app/pubspec.yaml --
+name: app
+dependencies:
+  flutter:
+    sdk: flutter
+  example_plugin:
+    path: ../plugin
+-- base/app/lib/main.dart --
+void main() {}
+-- base/app/integration_test/app_test.dart --
+void main() {}
+-- base/app/test/widget_test.dart --
+void main() {}
+-- base/other/pubspec.yaml --
+name: unrelated
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/other/test/widget_test.dart --
+void main() {}
+-- head/plugin/android/src/main/kotlin/ExamplePlugin.kt --
+class ExamplePlugin { }
+-- want --
+select plugin/test/plugin_test.dart
+select app/integration_test/app_test.dart
+select app/test/widget_test.dart
+noselect other/test/widget_test.dart

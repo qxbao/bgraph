@@ -35,6 +35,10 @@ func TestRubyCommands(t *testing.T) {
 			[][]string{{"bundle", "exec", "ruby", "-Ilib", "-Itest", "-e", minitestLoader, "test/a_test.rb"}}},
 		{"option-like name", rbsel("rspec", ".", "", "-x_spec.rb"),
 			[][]string{{"rspec", "./-x_spec.rb"}}},
+		{"Cucumber with all features' support", rbsel("cucumber", "gems/x", "Gemfile", "gems/x/features/admin/a.feature", "gems/x/features/b.feature"),
+			[][]string{{"bundle", "exec", "cucumber", "--require", "features", "features/admin/a.feature", "features/b.feature"}}},
+		{"Cucumber without bundler", rbsel("cucumber", ".", "", "features/a.feature"),
+			[][]string{{"cucumber", "--require", "features", "features/a.feature"}}},
 	}
 	for _, c := range cases {
 		p, err := Commands(c.sel, Options{})
@@ -56,6 +60,7 @@ func TestRubyCommands(t *testing.T) {
 		"rspec":    {"bundle", "exec", "rspec"},
 		"minitest": {"bundle", "exec", "rake", "test"},
 		"rails":    {"bin/rails", "test"},
+		"cucumber": {"bundle", "exec", "cucumber"},
 	} {
 		w := model.Selection{Scope: model.TierModule, Tests: []model.SelectedTest{
 			{Unit: "<rb-all-tests:.>", Project: ".", Runner: runner, Whole: true, Config: "Gemfile"},

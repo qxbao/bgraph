@@ -1,0 +1,19 @@
+Conventional Gherkin plus Ruby glue identifies an unbundled Cucumber suite.
+-- base/features/left.feature --
+Feature: Left
+  Scenario: Shared step
+    Given a shared step
+-- base/features/right.feature --
+Feature: Right
+  Scenario: Shared step
+    Given a shared step
+-- base/features/step_definitions/shared.rb --
+Given("a shared step") {}
+-- head/features/right.feature --
+Feature: Updated right
+  Scenario: Shared step
+    Given a shared step
+-- want --
+scope graph
+select features/right.feature
+noselect features/left.feature

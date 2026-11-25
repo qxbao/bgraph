@@ -1,0 +1,16 @@
+The parent Cucumber invocation discovers features rooted in a separately marked Ruby project under its own features tree.
+-- base/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/features/sample/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/features/sample/features/orders.feature --
+Feature: Orders
+-- head/features/sample/features/orders.feature --
+Feature: Orders changed
+-- want --
+scope graph
+select <rb-all-cucumber:.>
+select features/sample/features/orders.feature
+noselect <rb-all-cucumber:features/sample>

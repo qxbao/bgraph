@@ -1,0 +1,28 @@
+A Cucumber.js profile in a Ruby subproject can use the JavaScript workspace's dependency and custom glue paths.
+-- base/package.json --
+{"name":"workspace","private":true,"workspaces":["service"],"devDependencies":{"@cucumber/cucumber":"^12.0.0"}}
+-- base/service/Gemfile --
+source "https://rubygems.org"
+gem "rspec"
+-- base/service/package.json --
+{"name":"service","private":true}
+-- base/service/spec/unit_spec.rb --
+RSpec.describe("unit") {}
+-- base/service/cucumber.yml --
+default:
+  require: ["acceptance/steps/*.js"]
+  paths: ["acceptance/*.feature"]
+-- base/service/acceptance/steps/orders.js --
+const { Given } = require("@cucumber/cucumber")
+Given("order data", function () {})
+-- base/service/acceptance/orders.feature --
+Feature: Orders
+  Scenario: Open an order
+    Given order data
+-- base/README.md --
+Workspace
+-- head/README.md --
+Workspace updated
+-- want --
+scope none
+noselect <rb-all-cucumber:service>

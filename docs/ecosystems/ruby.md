@@ -1,6 +1,6 @@
 # Ruby
 
-bgraph selects Ruby tests one test file at a time: RSpec spec files, Minitest and Test::Unit test files, and Rails tests. Ruby
+bgraph selects Ruby tests one test file at a time, including RSpec, Minitest, Test::Unit, Rails tests and Cucumber features. Ruby
 loads code with `require`, `require_relative`, `load` and `autoload` into one process, so a test file depends on the transitive
 closure of what it loads. bgraph reads `Gemfile`, gemspecs, `.rspec` and `Rakefile`s as text and scans every Ruby file with its
 own lexer; it never runs Ruby or Bundler.
@@ -9,10 +9,10 @@ own lexer; it never runs Ruby or Bundler.
 
 | | |
 |---|---|
-| Granularity | One test file per unit; a whole-project unit when the test file pattern is computed |
-| Unit ID format | Repo-relative path of the test file, e.g. `spec/models/user_spec.rb`; `<rb-all-tests:DIR>` for a whole-project unit, e.g. `<rb-all-tests:.>` |
-| Runners | RSpec (`rspec`), Rails (`bin/rails test`), Minitest / Test::Unit (a `ruby -I…` loader, like `Rake::TestTask`'s) |
-| Manifests/configs read | `Gemfile`, `gems.rb`, `*.gemspec`, `Rakefile` and `*.rake` (`Rake::TestTask`, `RSpec::Core::RakeTask`), `.rspec`, `.rspec-local`, `.rspec-parallel`, `spec/spec.opts` |
+| Granularity | One test or feature file per unit. Computed discovery uses a whole-project unit. |
+| Unit ID format | Repository-relative path, e.g. `spec/models/user_spec.rb` or `features/login.feature`. Whole suites use `<rb-all-tests:DIR>` or `<rb-all-cucumber:DIR>`, with `.` for the root. |
+| Runners | RSpec (`rspec`), Rails (`bin/rails test`), Minitest / Test::Unit (a `ruby -I…` loader, like `Rake::TestTask`'s), Cucumber (`cucumber`) |
+| Manifests/configs read | `Gemfile`, `gems.rb`, `*.gemspec`, `Rakefile` and `*.rake` (`Rake::TestTask`, `RSpec::Core::RakeTask`), `.rspec`, `.rspec-local`, `.rspec-parallel`, `spec/spec.opts`, Cucumber profile file locations |
 | Lockfiles (and level) | `Gemfile.lock`, `gems.locked`: **L0**. See [lockfiles](../lockfiles.md) |
 | Dynamic layer | per-method narrowing of selected test files: [dynamic layer, section 10](../dynamic-layer.md#10-ruby-per-method-narrowing) (off by default) |
 
@@ -29,6 +29,8 @@ own lexer; it never runs Ruby or Bundler.
 - **Mixed repositories**: a Ruby project next to a Node or Python project. A sub-tree holding another ecosystem's manifest and no
   Ruby file is not Ruby's; Ruby widenings select Ruby units only.
 - A repository with no Ruby marker file is not analyzed: a stray `.rb` script is left to the general rules.
+- An unbundled Cucumber suite can establish a root Ruby project when `features/` contains Ruby glue and a feature, or
+  when a root Cucumber profile accompanies the glue and a feature in another directory.
 - **Never repository code**: paths through `node_modules`, `.bundle` or `vendor/bundle`.
 
 **Ruby files**: `.rb`, `.rake`, `.ru`, `.gemspec`, `Gemfile`, `Rakefile`, and extensionless files directly below `bin/`, `exe/`
@@ -59,6 +61,21 @@ widened, and runs the project's whole suite (`config_is_code`).
 claims it), a file below the `.rspec` `--default-path`, or a file an RSpec pattern matches; `rails` for a file below `test/` of
 a Rails application (a project with `bin/rails` and `config/application.rb`); `minitest` otherwise.
 
+### Cucumber features
+
+A Ruby project's `features/**/*.feature` files are Cucumber units. Each unit runs every scenario in that file. Each
+depends on the shared support tree, including hooks, step definitions, parameter types, nearby data and any code the
+support files load. A step definition can satisfy any feature, so changing it selects every feature of the suite.
+If a suite uses a Cucumber.js options mapping as its default profile, bgraph requires Ruby glue under `features/` or a
+bundled Cucumber gem to classify the suite as Ruby.
+
+A `cucumber.yml` or `cucumber.yaml` at the project root, under `.config/`, or under `config/` delegates discovery to
+Cucumber. Tracked glue under `vendor/gems/*/cucumber` or `vendor/plugins/*/cucumber` and overlapping nested Ruby projects
+under `features/` also use `<rb-all-cucumber:DIR>`. Like other whole-suite units, this unit runs on any meaningful change.
+The Cucumber command honors its default profile, including any custom feature paths, requires and filters.
+When a profile is present, changes to tracked documentation can also select the suite because a profile can load fixtures
+outside its project directory.
+
 ## What a unit depends on
 
 **Loads** recognized anywhere in a file (method bodies, conditionals, `begin`/`rescue`; strings, comments, heredocs and
@@ -87,6 +104,33 @@ a Rails application (a project with `bin/rails` and `config/application.rb`); `m
   its project outside the test, log, tmp, coverage and doc directories (templates, locales and `config/*.yml` included: request
   and system specs render them).
 
+### Constant-level autoloading
+
+Use [`[[ruby_autoload]]`](../configuration.md#ruby_autoload) to declare lazy-loaded Ruby files with conventional
+constant names. The declaration covers accesses in Ruby sources scanned by bgraph and explicit loads that bgraph follows.
+The default dependencies still cover whole autoload directories.
+
+```toml
+[[ruby_autoload]]
+paths = ["app/services/**/*.rb"]
+reason = "The test environment loads these services lazily via their conventional constants"
+```
+
+For a declared file, a method-body edit can follow the constants that name it. A reference such as `Admin::EmailSender`
+keeps every declared `email_sender.rb` candidate, including those under a different namespace. This covers lexical
+lookup, inheritance, acronyms and ambiguous names without evaluating Ruby. Explicit `require`, `load` and other ordinary
+edges remain in the graph. Files outside the declaration retain the loader's blanket dependencies, including Rails templates
+and other non-Ruby inputs.
+
+Known reflective calls such as `const_get` and `constantize`, Zeitwerk's `load_file`, eager-load operations and uncertain Ruby
+scans connect to all declared targets. A computed `push_dir` keeps its original dependency. Adding or removing a declared
+file or changing code outside method bodies widens to Ruby tests across the repository (`config_is_code`), since another
+project can load the same file. Omit files reached via custom constant names, boot callbacks, framework conventions such as
+routes and STI, templates, or lookup in external code from a declaration unless their dependencies are already covered. See
+[Rails autoloading](https://guides.rubyonrails.org/autoloading_and_reloading_constants.html) and [Zeitwerk](https://github.com/fxn/zeitwerk).
+
+### Other dependencies
+
 **Implicit inputs of a test**: the `--require` / `-r` features of the project's `.rspec` option files, and the `-r` features
 of `Rake::TestTask` `ruby_opts`.
 
@@ -107,6 +151,7 @@ Widenings below are `module` tier and tagged `ruby`: they select Ruby units only
 | `*.gemspec`: anything else (`version`, `files`, dependencies, `require_paths`, `executables`), added, deleted, or unreadable | `manifest_changed`, scope = its directory |
 | `Gemfile.lock`, `gems.locked` | `lock_changed` at level L0, scope = its directory (every Ruby project below it) |
 | `.rspec`, `.rspec-local`, `.rspec-parallel`, `spec/spec.opts`, `Rakefile`, `*.rake` below `tasks/` or `rakelib/`, `.simplecov` | `test_config_changed`, scope = the project, nested projects included (a root `Rakefile` often runs them) |
+| `cucumber.yml` or `cucumber.yaml` at a Cucumber project's root, in `.config/` or in `config/` | `test_config_changed`, scope = the project; the command uses native profile discovery |
 | `.rubocop.yml`, `.rubocop_todo.yml`, `.reek.yml`, `.yardopts`, `.document`, `.standard.yml` at a project root; `CHANGELOG*` and `*.rdoc` outside test directories | Nothing |
 | Native extension sources below `ext/` (C, C++, Java, yacc, `extconf.rb`, `depend`) | `unknown_file`, scope = the project |
 | Any file below a `spec`, `test` or `tests` directory that nothing references (test-site markdown, fixtures) | `unreferenced_file`, scope = the project |
@@ -154,6 +199,7 @@ relative to it. `bundle exec` is used when a `Gemfile` or `gems.rb` lies at or a
 | rspec | `bundle exec rspec <files>` | `bundle exec rspec` |
 | rails | `bin/rails test <files>` | `bin/rails test` |
 | minitest | `bundle exec ruby -Ilib -Itest -e 'ARGV.each { \|f\| require File.expand_path(f) }' <files>` (`-I`: `lib` plus the literal `Rake::TestTask` `libs`, or `lib` plus the test directory) | `bundle exec rake test` |
+| cucumber | `bundle exec cucumber --require features <files>` | `bundle exec cucumber` |
 
 Long file lists are split into batches under the Windows command-line limits.
 
@@ -171,13 +217,22 @@ bundle exec rspec spec/models/billing_spec.rb spec/models/user_spec.rb
 `billing_spec.rb` is selected although it never names `user.rb`: the `.rspec` `--require spec_helper` loads `lib/shop.rb`, which
 requires every file of the library.
 
+For a change to `features/nested/two.feature`:
+
+```console
+$ bgraph command --base HEAD
+# scope: graph
+# ruby: the selected files of a project run in one process (per batch): global state leaking between files that are not selected together is not modeled
+bundle exec cucumber --require features features/nested/two.feature
+```
+
 The selected files of a project run in one process (per batch): state that leaks between test files not selected together is
 not modeled.
 
 ## Addressing units in bgraph.toml
 
-A `[[rule]]` `affects` entry is a test file, a directory (every unit below it), a glob over test files, or a whole-project unit
-ID:
+A `[[rule]]` `affects` entry is a test or feature file, a directory (every unit below it), a glob over test and feature files,
+or a whole-project unit ID:
 
 ```toml
 [[rule]]
@@ -198,14 +253,16 @@ configuration error: the selection is `full` (`user_rule`).
 - **Computed requires.** Plugin loaders, `require name` helpers and command-line `--require` handling are common in
   frameworks; each one reached by the test helper makes almost any Ruby change select every test. Describe them with
   `[[dynamic]]`.
-- **Rails applications** depend on every file of the application (autoloading maps constants to files by convention); a change
-  outside the test directories selects every test that boots the application. Constant-level narrowing is not implemented.
+- **Rails applications** have broad boot dependencies. `[[ruby_autoload]]` narrows declared targets when the remaining boot
+  dependencies leave room. Use it for conventional lazy code rather than files with boot-time or framework-wide effects.
 - **`Gemfile.lock` is L0**: any change selects every Ruby test below it.
 - **Heuristic data edges add, never remove.** A data file named by one test's string literal counts as referenced; another
   test reading it through a computed path is not seen.
+- **Cucumber** selects features at file granularity. All features share their support dependencies, and projects with a profile
+  use whole-suite selection. Custom `Cucumber::Rake::Task` options live outside the CLI's discovery. The generated command
+  uses the default Cucumber profile. The Ruby dynamic layer handles Ruby test files.
 - **Not modeled**: `eval` of strings other than `File.read(...)`, `instance_eval` of a code variable, gems activated or
-  plugins loaded by RubyGems outside the repository, `~/.rspec` and `SPEC_OPTS`, and Cucumber features (unreferenced
-  `.feature` files widen their project).
+  plugins loaded by RubyGems outside the repository, `~/.rspec` and `SPEC_OPTS`.
 
 ## See also
 

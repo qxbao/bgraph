@@ -30,7 +30,7 @@ commit as the feature:
 | .NET (VSTest, Microsoft.Testing.Platform) | MSBuild project | – | test classes | [dotnet](ecosystems/dotnet.md) |
 | Go | package | go.sum (lines only added) | test functions, per changed function | [go](ecosystems/go.md) |
 | PHP | Composer project | – | test files, per changed function | [php](ecosystems/php.md) |
-| Ruby (RSpec, Minitest, Test::Unit, Rails) | test file | – | test files, per changed method | [ruby](ecosystems/ruby.md) |
+| Ruby (RSpec, Minitest, Test::Unit, Rails, Cucumber) | test file | – | Ruby test files, per changed method | [ruby](ecosystems/ruby.md) |
 | Swift (SwiftPM) | test target or package | – | – | [swift](ecosystems/swift.md) |
 | C and C++ (CMake/CTest, Meson) | registered test or build project | – | – | [C and C++](ecosystems/cpp.md) |
 | Dart / Flutter | test file | – | – | [dart](ecosystems/dart.md) |
@@ -39,15 +39,17 @@ commit as the feature:
 
 | Item | Status | Priority | Notes | Page |
 |---|---|---|---|---|
-| Ruby (RSpec, Minitest; Bundler, `Gemfile.lock`) | done (unreleased) | 1 | Test-file units; `require` by path suffix; Zeitwerk and Rails autoloading depend on whole directories; computed `require` widens (describable with `[[dynamic]]`) | [ruby](ecosystems/ruby.md) |
-| Ruby: constant-level narrowing for Zeitwerk and Rails autoloading | planned | 2 | Today an autoloading application or gem depends on every file it can autoload; mapping referenced constants to files would narrow it, with widening for metaprogramming | [ruby](ecosystems/ruby.md#known-gaps-and-over-selection) |
-| Ruby: Cucumber features | planned | 3 | `.feature` files are not units; a change to one widens its project | |
+| Ruby (RSpec, Minitest; Bundler, `Gemfile.lock`) | done (unreleased) | 1 | Test-file units; `require` by path suffix; Zeitwerk and Rails autoloading depend on whole directories by default; computed `require` widens (describable with `[[dynamic]]`) | [ruby](ecosystems/ruby.md) |
+| Ruby: constant-level narrowing for Zeitwerk and Rails autoloading | done (unreleased) | 2 | Opt-in `[[ruby_autoload]]` for lazy files with conventional names. Keeps directory coverage for indirect lookups, eager loading and structural edits. | [ruby](ecosystems/ruby.md#constant-level-autoloading) |
+| Ruby: Cucumber features | done (unreleased) | 3 | One unit per conventional `.feature` file, with shared support and step definitions. Profiles use the native whole-suite command. | [ruby](ecosystems/ruby.md#cucumber-features) |
+| Ruby: Cucumber Rake tasks | planned | 3 | Discover custom `Cucumber::Rake::Task` commands and their task-specific feature and support paths. | [ruby](ecosystems/ruby.md#known-gaps-and-over-selection) |
 | PHP (PHPUnit, Pest; Composer, `composer.lock`) | done (unreleased) | 1 | Project ownership, Composer autoload roots, and static and computed includes | [php](ecosystems/php.md) |
 | Deno (`deno test`, `deno.json`, `deno.lock`) | dropped | – | Cloudflare acquired Deno (Oct 2026); runtime development ends around Oct 2027 with maintenance only until then. Not worth a scanner and evaluation for a sunsetting runtime; reopen if a maintained fork gains adoption | |
 | Swift (SwiftPM, `swift test`, `Package.resolved`) | done (unreleased) | 2 | SwiftPM test targets, package fallback for computed manifests, L0 lockfiles | [swift](ecosystems/swift.md) |
 | Dart / Flutter (`dart test`, `flutter test`, `pubspec.lock`) | done (unreleased) | 2 | Test-file units (not package units: imports are static and each test file runs on its own); `package:` imports across pub workspaces, melos and path dependencies; golden and fixture files named in literals; `pubspec.lock` at L0 | [dart](ecosystems/dart.md) |
-| Dart: narrowing through library export files | planned | 2 | Most packages export their whole library through one file that tests import, so a change selects most of the package; following which exported names a test uses would narrow it | [dart](ecosystems/dart.md#known-gaps-and-over-selection) |
-| Dart: Flutter host-app directories | planned | 3 | A change under `android/`, `ios/` and the other platform directories widens to the Flutter package; only integration tests run the host app | [dart](ecosystems/dart.md#known-gaps-and-over-selection) |
+| Dart: narrowing through library export files | done (unreleased) | 2 | Follow identifiers through export-only libraries with independently checkable leaf declarations. Keep full dependencies for opaque imports, runtime lookup and compiler-sensitive changes. | [dart](ecosystems/dart.md#narrowing-through-library-exports) |
+| Dart: analyzer-backed narrowing for general library declarations | planned | 2 | Extend re-export narrowing to declarations that need Dart compiler validation and symbol resolution. | [dart](ecosystems/dart.md#narrowing-through-library-exports) |
+| Dart: Flutter host-app directories | done (unreleased) | 3 | Conventional host files reach the app's integration tests. Shared tooling, plugin inputs and tests that read files directly keep wider coverage. | [dart](ecosystems/dart.md#flutter-host-app-inputs) |
 | Elixir (ExUnit via `mix test`; Mix, `mix.lock`) | planned | 2 | Test-file units, as for Ruby; module dependencies are static and can be cross-checked against `mix xref`; macros, `use` and compile-time dependencies need widening. Not in SWE-bench Multilingual or Multi-SWE-bench, so T1 needs its own dataset | |
 | C / C++ (CMake + CTest, Meson) | done (unreleased) | 3 | Literal test registrations and build graphs narrow by test name. Computed build logic selects the entire project. | [C and C++](ecosystems/cpp.md) |
 

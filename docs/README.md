@@ -27,7 +27,7 @@
 | .NET | MSBuild project | [ecosystems/dotnet.md](ecosystems/dotnet.md) |
 | Go | package | [ecosystems/go.md](ecosystems/go.md) |
 | PHP | Composer project | [ecosystems/php.md](ecosystems/php.md) |
-| Ruby | test file | [ecosystems/ruby.md](ecosystems/ruby.md) |
+| Ruby | test file (including Cucumber features) | [ecosystems/ruby.md](ecosystems/ruby.md) |
 | Swift | SwiftPM test target or package | [ecosystems/swift.md](ecosystems/swift.md) |
 | C and C++ | registered test or build project | [ecosystems/cpp.md](ecosystems/cpp.md) |
 | Dart / Flutter | test file | [ecosystems/dart.md](ecosystems/dart.md) |

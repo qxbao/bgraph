@@ -1,0 +1,25 @@
+Adding a provider can change loader layout or shadowing. The fallback is Ruby-scoped in a mixed repository.
+-- base/bgraph.toml --
+[[ruby_autoload]]
+paths = ["app/services/**/*.rb"]
+reason = "Conventional lazy services"
+-- base/Gemfile --
+gem "rails"
+-- base/config/application.rb --
+class Application < Rails::Application; end
+-- base/spec/boot_spec.rb --
+require_relative "../config/application"
+-- base/spec/other_spec.rb --
+42
+-- base/web/package.json --
+{"scripts":{"test":"vitest"},"devDependencies":{"vitest":"*"}}
+-- base/web/value.test.js --
+import { test } from 'vitest';
+test('it runs', () => {});
+-- head/app/services/receipt.rb --
+class Receipt; end
+-- want --
+widen config_is_code
+select spec/boot_spec.rb
+select spec/other_spec.rb
+noselect web/value.test.js

@@ -1,0 +1,16 @@
+Explicit --require suppresses Cucumber's default vendor glue. Preserve the native whole command when that glue exists.
+-- base/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/features/orders.feature --
+Feature: Orders
+  Scenario: Open an order
+    Given vendor glue
+-- base/vendor/plugins/sample/cucumber/steps.rb --
+Given("vendor glue") { true }
+-- head/vendor/plugins/sample/cucumber/steps.rb --
+Given("vendor glue") { false }
+-- want --
+notfull
+select <rb-all-cucumber:.>
+noselect features/orders.feature

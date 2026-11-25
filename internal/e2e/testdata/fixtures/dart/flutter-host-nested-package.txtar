@@ -1,0 +1,33 @@
+A nested Flutter package owns its platform files, and the outer app can still consume them in its host build.
+-- base/pubspec.yaml --
+name: outer
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/lib/main.dart --
+void main() {}
+-- base/integration_test/outer_test.dart --
+void main() {}
+-- base/test/outer_test.dart --
+void main() {}
+-- base/android/example/pubspec.yaml --
+name: nested
+dependencies:
+  flutter:
+    sdk: flutter
+-- base/android/example/lib/main.dart --
+void main() {}
+-- base/android/example/integration_test/app_test.dart --
+void main() {}
+-- base/android/example/test/widget_test.dart --
+void main() {}
+-- base/android/example/web/index.html --
+<html></html>
+-- head/android/example/web/index.html --
+<html><body></body></html>
+-- want --
+select android/example/integration_test/app_test.dart
+noselect android/example/test/widget_test.dart
+select integration_test/outer_test.dart
+noselect test/outer_test.dart
+scope graph

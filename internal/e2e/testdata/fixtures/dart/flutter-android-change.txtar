@@ -1,5 +1,4 @@
-A change under a Flutter app's android/ directory falls to the general rules (module widening of the
-nearest project); the integration tests that run the host app are also selected.
+A change to Flutter Android host code selects the integration tests that build it.
 -- base/app/pubspec.yaml --
 name: app
 environment:
@@ -26,6 +25,10 @@ void main() { IntegrationTestWidgetsFlutterBinding.ensureInitialized(); app.main
 <manifest/>
 -- base/app/android/app/src/main/kotlin/MainActivity.kt --
 class MainActivity
+-- base/app/package.json --
+{"name":"web-tools","devDependencies":{"vitest":"^2.0.0"}}
+-- base/app/test/util.test.ts --
+export const answer = 42
 -- base/other/pubspec.yaml --
 name: other
 environment:
@@ -45,6 +48,8 @@ void main() => test('o', () {});
 class MainActivity { }
 -- want --
 select app/integration_test/app_test.dart
-select app/test/widget_test.dart
+noselect app/test/widget_test.dart
+noselect app/test/util.test.ts
 noselect other/test/o_test.dart
-notfull
+scope graph
+nowiden unknown_import

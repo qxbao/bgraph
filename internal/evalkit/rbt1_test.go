@@ -24,3 +24,15 @@ func TestRbMissing(t *testing.T) {
 		t.Errorf("violations %+v", info.Violations)
 	}
 }
+
+func TestRbMissingDistinguishesWholeRunners(t *testing.T) {
+	req := []string{"sub/features/a.feature", "features/b.feature", "sub/test/x_test.rb", "test/y_test.rb", "<rb-all-tests:sub>"}
+	sel := []SelUnit{
+		{Unit: "<rb-all-cucumber:sub>", Whole: true, WholeProject: "sub"},
+		{Unit: "<rb-all-tests:.>", Whole: true, WholeProject: "."},
+	}
+	want := []string{"sub/features/a.feature", "features/b.feature", "<rb-all-tests:sub>"}
+	if miss := rbMissing(req, sel, nil, nil); !reflect.DeepEqual(miss, want) {
+		t.Fatalf("missing %v, want %v", miss, want)
+	}
+}

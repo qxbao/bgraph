@@ -1,0 +1,25 @@
+A nested Cucumber profile can load a fixture outside its project directory.
+-- base/service/Gemfile --
+source "https://rubygems.org"
+gem "cucumber"
+-- base/service/cucumber.yml --
+default: --require features features
+-- base/service/features/orders.feature --
+Feature: Orders
+  Scenario: Open an order
+    Given order data
+-- base/service/features/step_definitions/orders.rb --
+Given("order data") do
+  fixture = ENV.fetch("ORDER_FIXTURE")
+  raise "invalid order" unless File.read(fixture).chomp == "first"
+end
+-- base/service/spec/unit_spec.rb --
+RSpec.describe("unit") {}
+-- base/shared/order.md --
+first
+-- head/shared/order.md --
+second
+-- want --
+scope graph
+select <rb-all-cucumber:service>
+noselect service/spec/unit_spec.rb

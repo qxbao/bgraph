@@ -26,7 +26,16 @@ func (b *builder) references(f string, p *pkg) {
 		scope = p.dir
 	}
 	res, err := b.sc.Scan(b.t, f)
+	if b.trackHostReaders && (err != nil || res.Uncertain || slices.ContainsFunc(res.Imports, func(ref model.ImportRef) bool {
+		return b.mayReadFlutterHost(f, ref, res.Dart)
+	})) {
+		b.hostReaders = append(b.hostReaders, f)
+	}
+	if err == nil && res.Dart != nil {
+		b.namespaces[f] = res.Dart
+	}
 	if err != nil || res.Uncertain {
+		b.opaqueExportUse = true
 		detail := res.UncertainReason
 		if err != nil {
 			detail = err.Error()
@@ -38,6 +47,7 @@ func (b *builder) references(f string, p *pkg) {
 	for _, im := range res.Imports {
 		switch im.Kind {
 		case model.ImportDartImport, model.ImportDartExport, model.ImportDartPart:
+			b.opaqueExportUse = b.opaqueExportUse || b.mightObserveExports(p, im.Spec)
 			kind := model.EdgeImport
 			switch im.Kind {
 			case model.ImportDartExport:
@@ -47,6 +57,7 @@ func (b *builder) references(f string, p *pkg) {
 			}
 			b.directive(f, scope, im, kind)
 		case model.ImportDartLoad:
+			b.opaqueExportUse = true
 			if im.Dynamic {
 				b.unresolved(model.Unresolved{File: f, Spec: im.Spec, Class: model.UnresolvedDynamic, Line: im.Line, ScopeTier: model.TierModule,
 					ScopeDir: scope, TriggerGlobs: dartTriggers, SkipTests: true, Detail: "code loaded from a computed URI"})
@@ -191,6 +202,8 @@ func (b *builder) directive(from, scope string, im model.ImportRef, kind model.E
 		if b.t.Has(c) {
 			found = true
 			b.edge(from, c, kind, im.Spec, im.Line)
+		} else {
+			b.opaqueExportUse = true // an alternative may resolve to code outside the index
 		}
 	}
 	if found {
@@ -210,6 +223,7 @@ func (b *builder) directive(from, scope string, im model.ImportRef, kind model.E
 // missing records an import whose target is not in the tree: unless a [[generated]] entry names the files it is built from,
 // any change in the importer's package (or the target's package) seeds the importer.
 func (b *builder) missing(from, scope string, im model.ImportRef, cands []string, detail string) {
+	b.opaqueExportUse = true // even a generated target with known inputs has opaque behavior
 	if b.rules != nil && len(cands) > 0 {
 		var srcs []string
 		for _, c := range cands {

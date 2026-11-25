@@ -1,0 +1,40 @@
+A computed lookup depends on every declared autoload target, while a normal user of only Report is still excluded.
+-- base/bgraph.toml --
+[[ruby_autoload]]
+paths = ["lib/shop/**/*.rb"]
+reason = "Conventional lazy-loaded names; computed local lookups are guarded"
+-- base/Gemfile --
+gem "zeitwerk"
+-- base/lib/shop.rb --
+require "zeitwerk"
+loader = Zeitwerk::Loader.for_gem
+loader.setup
+module Shop; end
+-- base/lib/shop/receipt.rb --
+class Shop::Receipt
+  def total
+    42
+  end
+end
+-- base/lib/shop/report.rb --
+class Shop::Report; end
+-- base/spec/lookup_spec.rb --
+require "shop"
+Shop.const_get(ENV.fetch("SHOP_SERVICE")).new
+-- base/spec/report_spec.rb --
+require "shop"
+Shop::Report.new
+-- base/spec/eager_spec.rb --
+require "shop"
+Zeitwerk::Loader.then(&:"eager_load_all")
+-- head/lib/shop/receipt.rb --
+class Shop::Receipt
+  def total
+    43
+  end
+end
+-- want --
+scope graph
+select spec/lookup_spec.rb
+select spec/eager_spec.rb
+noselect spec/report_spec.rb
